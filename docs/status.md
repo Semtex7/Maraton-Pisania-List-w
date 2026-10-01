@@ -33,6 +33,7 @@ Dokumentacja opisuje te zmiany jako aktualny stan roboczy, ale nie potwierdza ic
 - Nie wykonano pełnego buildu Gulp jako części dokumentowania.
 - Wykonano testowy podpis na lokalnej petycji z połączeniem do Salesforce Sandbox; panel podpisów pokazał status synchronizacji.
 - Zweryfikowano poprawne logowanie kontem testowym i przekierowanie do `/panel/`.
+- Zweryfikowano rozpoczęcie pobierania raportu PDF z panelu właściciela wydarzenia.
 - Lokalne narzędzie przeglądarkowe zgłaszało błąd certyfikatu dla części zasobów HTTPS z `uploads`; nie zmieniano tego w ramach dokumentacji.
 
 ## Otwarte kwestie
@@ -41,3 +42,4 @@ Dokumentacja opisuje te zmiany jako aktualny stan roboczy, ale nie potwierdza ic
 - Czy konfiguracja Salesforce powinna mieć osobny opis procedury wdrożenia poza tym repozytorium?
 - Czy istniejące README w kopiach `wp-content/` i `wp-content-1/` powinny zostać usunięte albo zastąpione jednym źródłem prawdy? Nie zmieniono ich, ponieważ nie należą do zakresu dokumentowanego motywu i pluginu.
 - Brak potwierdzonego procesu produkcyjnego deployu, migracji tabeli podpisów i rotacji konfiguracji zewnętrznych.
+- Generator PDF raportu jest wersją wstępną: tekstową, jednostronicową i bez pełnej obsługi polskich znaków/fontów.

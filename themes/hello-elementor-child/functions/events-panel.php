@@ -252,7 +252,7 @@ function render_my_events_shortcode() {
                     if ( $current_timestamp >= $target_timestamp ) {
                         if ( $is_report_submitted === '1' ) {
                             echo '<span class="btn-action status-success">' . esc_html__('Raport wysłany', 'amnestympl') . '</span>';
-                            echo '<a href="?download_cert=' . esc_attr($post_id) . '" class="btn-action btn-download" data-id="' . esc_attr($post_id) . '">' . esc_html__('Pobierz zaświadczenie', 'amnestympl') . '</a>';
+                            echo '<a href="?download_report=' . esc_attr($post_id) . '" class="btn-action btn-download" data-id="' . esc_attr($post_id) . '">' . esc_html__('Pobierz raport PDF', 'amnestympl') . '</a>';
                         } else {
                             echo '<button class="btn-action btn-submit open-ajax-report" data-id="' . esc_attr($post_id) . '">' . esc_html__('Wyślij raport', 'amnestympl') . '</button>';
                         }

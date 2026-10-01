@@ -67,3 +67,18 @@ Uruchamia ona zadanie Gulp `default`, które buduje zasoby, uruchamia BrowserSyn
 - Motyw nie ma własnego test suite ani typechecka.
 - Podczas zmian w CSS trzeba rozróżnić ręczny [`style.css`](../themes/hello-elementor-child/style.css) od SCSS i plików `dist`.
 - Uprawnienia, nonce’y i przekierowania są częścią kontraktu istniejących formularzy i nie powinny być usuwane przy zmianach wyglądu.
+
+## Raport wydarzenia i PDF
+
+Po upływie siedmiu dni od daty wydarzenia właściciel może złożyć raport z poziomu shortcode’u `[my_events]`. Formularz zapisuje:
+
+- opis przebiegu wydarzenia;
+- liczbę podpisanych listów;
+- liczbę uczestników;
+- informację, czy pobrano materiały;
+- dodatkowe uwagi o materiałach;
+- link do zdjęć i opcjonalny plik ZIP.
+
+Po zapisaniu raportu panel pokazuje przycisk `Pobierz raport PDF`. Endpoint sprawdza zalogowanie, typ wpisu, właściciela wydarzenia i fakt złożenia raportu. PDF zawiera dane wydarzenia, lokalizację, statystyki, materiały, podsumowanie i link do zdjęć.
+
+Generator jest wersją wstępną bez zewnętrznej biblioteki PDF: tworzy prosty jednostronicowy dokument tekstowy i usuwa znaki diakrytyczne. Dłuższe raporty są ograniczone do pierwszych 43 linii. Docelowo warto zastąpić go biblioteką PDF z obsługą fontów i wielostronicowego składu.

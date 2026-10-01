@@ -1,0 +1,568 @@
+
+// FRONTEND: Form Styles
+@use "../includes/index" as *;
+
+
+// ADMIN: Meta Box Styles (enqueue this only in wp-admin)
+
+.report-meta-table {
+    .report-table-th {
+        width: 20%;
+        padding-bottom: $spacing-large;
+    }
+
+    .report-table-td {
+        padding-bottom: $spacing-large;
+    }
+
+    .report-content-box {
+        background: $color-bg-light;
+        padding: $spacing-large;
+        border: $border-width-base solid $color-border-light;
+        border-radius: $border-radius-base;
+        white-space: pre-wrap;
+    }
+}
+
+// FRONTEND: Edit Form & Events Table
+
+.form-header-actions {
+    margin-bottom: $spacing-xlarge;
+
+    .btn-back {
+        background: none;
+        border: none;
+        color: $color-highlight;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 0;
+        font-size: $font-size-large;
+    }
+
+    .form-title-edit {
+        margin-top: $spacing-large;
+    }
+}
+
+.form-section-title {
+    margin-top: $spacing-xlarge;
+    margin-bottom: 16px;
+}
+
+.form-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: $spacing-large;
+    margin-top: $spacing-large;
+}
+
+.ajax-form-wrapper {
+    display: none;
+    padding-top: $spacing-xlarge;
+}
+
+// Events Table Styles
+$grid-columns-layout: 1fr 2fr 1.5fr 3fr; 
+
+.events-grid-header {
+    display: grid;
+    grid-template-columns: $grid-columns-layout;
+    margin-bottom: 15px; // Space between floating header and grid body
+    
+    .header-cell {
+        font-weight: 700;
+        text-transform: uppercase;
+        text-align: center;
+        letter-spacing: 0.5px;
+    }
+}
+
+.events-grid-body {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #fff;
+    
+    // The trick to avoid double borders:
+    // Container handles the outer Top and Left borders
+    border-top: 2px solid #000;
+    border-left: 2px solid #000;
+    
+    .events-grid-row {
+        display: grid;
+        grid-template-columns: $grid-columns-layout;
+        
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px 15px;
+            
+            // Cells handle their own Bottom and Right borders
+            border-bottom: 2px solid #000;
+            border-right: 2px solid #000;
+            
+            &.actions-cell {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            &.date-cell {
+                min-width: 150px;
+            }
+        }
+    }
+}
+
+// Mobile responsiveness (Optional, but highly recommended)
+@media (max-width: 900px) {
+    .events-grid-header {
+        display: none; // Hide floating headers on mobile
+    }
+    
+    .events-grid-body {
+        border-top: none;
+        border-left: none;
+        background-color: transparent;
+        
+        .events-grid-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            border-top: 2px solid #000;
+            border-left: 2px solid #000;
+            background-color: #fff;
+            
+            .grid-cell {
+                justify-content: flex-start;
+                text-align: left;
+            }
+        }
+    }
+}
+// Buttons & Badges inside Table
+.btn-edit,
+.btn-submit {
+    color: $color-text-light;
+    padding: 6px 12px;
+    border: none;
+    border-radius: $border-radius-base;
+    cursor: pointer;
+    font-size: $font-size-medium;
+}
+
+.btn-edit {
+    background: $color-highlight;
+}
+
+.btn-submit {
+    background: $color-success;
+    margin-left: 8px;
+}
+
+.status-badge {
+    &.success {
+        color: $color-success;
+        font-weight: bold;
+        font-size: $font-size-small;
+        background: $color-bg-success-light;
+        padding: 4px 8px;
+        border-radius: $border-radius-base;
+        margin-left: 8px;
+    }
+}
+
+.empty-state-message {
+    padding: $spacing-large;
+    background-color: $color-bg-empty-state;
+    border-left: 4px solid $color-highlight;
+    margin-top: $spacing-xlarge;
+}
+
+.alert-message {
+    padding: $spacing-large;
+    border-radius: $border-radius-base + 1px; // 5px
+    margin-bottom: $spacing-xlarge;
+    border: $border-width-base solid transparent;
+
+    &.alert-default {
+        background: $color-bg-alert-default;
+    }
+    
+    &.alert-warning {
+        background: $color-bg-warning-light;
+        color: $color-text-warning-dark;
+    }
+
+    &.alert-success {
+        color: $color-text-success-dark;
+        background-color: $color-bg-success-light;
+        border-color: $color-border-success;
+    }
+
+    &.alert-danger {
+        color: $color-text-danger-dark;
+        background-color: $color-bg-danger-light;
+        border-color: $color-border-danger;
+    }
+}
+
+.global-materials-panel {
+    margin-bottom: 30px;
+    background: $color-bg-info-light;
+    padding: $spacing-large;
+    border-left: 4px solid $color-info;
+    border-radius: $border-radius-base;
+
+    .global-materials-title {
+        margin: 0 0 $spacing-medium 0;
+        font-size: 16px;
+        color: $color-text-success-dark;
+    }
+
+    .global-materials-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .btn-material-download {
+        background: $color-text-light;
+        color: $color-info;
+        border: $border-width-base solid $color-info;
+        padding: 8px 14px;
+        border-radius: $border-radius-base;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: $font-size-small;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+}
+
+// ====================================================================
+// FRONTEND: Carrier Selection Form
+// ====================================================================
+
+.radio-options-group {
+    display: flex;
+    gap: $spacing-large;
+    margin-top: $spacing-small;
+
+    .radio-label {
+        font-weight: normal;
+    }
+}
+
+.carrier-box {
+    border: $border-width-base solid $color-border-light;
+    padding: $spacing-large;
+    border-radius: $border-radius-base + 1px;
+    background: $color-bg-light;
+    margin-top: $spacing-medium;
+}
+
+.carrier-actions-group {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-medium;
+    margin-top: $spacing-small;
+}
+
+.btn-inpost {
+    background-color: $color-inpost;
+    color: #333;
+    padding: 10px 15px;
+    border: none;
+    border-radius: $border-radius-base;
+    font-weight: bold;
+    cursor: pointer;
+}
+
+.inpost-selection-status {
+    font-weight: bold;
+    color: $color-highlight;
+    margin-left: $spacing-medium;
+}
+
+.inpost-map-container {
+    width: 100%;
+    height: 450px;
+    border: $border-width-base solid $color-border-default;
+    margin-top: $spacing-medium;
+    border-radius: $border-radius-base + 1px;
+}
+
+.dpd-instruction {
+    font-size: 0.9em;
+    color: $color-text-secondary;
+    margin-bottom: $spacing-medium;
+}
+
+.btn-dpd {
+    display: inline-block;
+    background-color: $color-dpd;
+    color: $color-text-light;
+    padding: 8px 12px;
+    border-radius: $border-radius-base;
+    text-decoration: none;
+    font-weight: bold;
+    margin-bottom: $spacing-large;
+}
+
+.btn-save-info {
+    background-color: $color-info;
+    color: $color-text-light;
+    padding: 12px 20px;
+    border: none;
+    border-radius: $border-radius-base;
+    font-size: 1em;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: $spacing-medium;
+
+    &:hover {
+        background-color: $color-info-hover;
+    }
+}
+
+// ====================================================================
+// ADMIN: Order Meta Box & Settings
+// ====================================================================
+
+.order-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: $spacing-large;
+
+    th {
+        text-align: left;
+        padding: $spacing-medium;
+        background: $color-bg-light;
+        border-bottom: $border-width-base solid $color-border-light;
+        width: 30%;
+    }
+
+    td {
+        padding: $spacing-medium;
+        border-bottom: $border-width-base solid $color-border-light;
+        font-size: $font-size-medium;
+    }
+    
+    .package-size-value {
+        color: $color-highlight;
+    }
+    
+    .locker-id-value {
+        font-size: 16px;
+        background: $color-bg-warning-light;
+        padding: 4px 8px;
+        border-radius: $border-radius-base;
+        border: $border-width-base solid $color-border-warning;
+    }
+}
+
+.status-select {
+    padding: 6px;
+    font-weight: bold;
+    font-size: $font-size-medium;
+}
+
+.status-badge-admin {
+    padding: 4px 8px;
+    border-radius: $border-radius-base;
+    font-weight: bold;
+
+    &.status-sent {
+        color: $color-text-success-dark;
+        background: $color-bg-success-light;
+    }
+    
+    &.status-processing {
+        color: $color-text-info-dark;
+        background: $color-bg-info-alt;
+    }
+    
+    &.status-cancelled {
+        color: $color-text-danger-dark;
+        background: $color-bg-danger-light;
+    }
+    
+    &.status-pending {
+        color: $color-text-warning-dark;
+        background: $color-bg-warning-light;
+    }
+}
+
+.admin-materials-table {
+    .material-row-th {
+        padding-top: $spacing-xlarge;
+    }
+    
+    .material-row-td {
+        padding-top: $spacing-xlarge;
+    }
+    
+    .material-field-label {
+        display: block;
+        margin-bottom: $spacing-small;
+    }
+    
+    .material-input-group {
+        display: flex;
+        gap: $spacing-medium;
+        align-items: center;
+    }
+    
+    .btn-remove-media {
+        color: $color-danger;
+    }
+}
+
+.shipping-api-settings {
+    .settings-section-title {
+        margin-top: $spacing-xxlarge;
+        border-bottom: $border-width-base solid $color-border-default;
+        padding-bottom: $spacing-medium;
+    }
+
+    .settings-description {
+        font-size: $font-size-small;
+        color: $color-text-secondary;
+        margin-top: $spacing-small;
+        display: block;
+    }
+}
+
+.order-materials-form {
+    
+    // Pogrubione nagłówki sekcji, takie jak w projekcie
+    .uppercase-title {
+        font-size: 22px;
+        font-weight: 900; // Ekstra pogrubienie
+        text-transform: none; // Według zdjęcia pierwsza litera jest duża, reszta mała
+        margin-bottom: 25px;
+        color: #000;
+    }
+
+    // Nowe pola input z wyraźną obwódką
+    .form-input-bold {
+        border: 2px solid #000 !important; // Wyraźna, czarna ramka
+        border-radius: 8px !important; // Delikatne zaokrąglenie
+        padding: 16px 20px !important;
+        font-size: 18px !important;
+        font-weight: bold !important;
+        color: #000 !important;
+
+        &::placeholder {
+            color: #000;
+            font-weight: bold;
+            opacity: 1; // Zapewnia brak wyszarzenia w niektórych przeglądarkach
+        }
+        
+        &:focus {
+            border-color: #000 !important;
+            box-shadow: inset 0 0 0 1px #000;
+        }
+    }
+
+    // Kontener listy przycisków radio
+    .custom-radio-list {
+        display: flex;
+        flex-direction: column;
+        gap: 30px; // Duże odstępy w pionie
+        margin-bottom: 40px;
+
+        &.horizontal {
+            flex-direction: row; // Ułożenie obok siebie (dla kurierów)
+            flex-wrap: wrap; // Zapobiega ściskaniu na małych ekranach
+            gap: 40px;
+        }
+    }
+
+    // Pojedynczy element radio
+    .custom-radio-item {
+        display: flex;
+        align-items: flex-start;
+        cursor: pointer;
+        
+        // Ukrywamy domyślne wejście
+        input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        // Nowe, ręcznie robione kółko
+        .radio-custom-circle {
+            width: 26px;
+            height: 26px;
+            border: 2px solid #000;
+            border-radius: 50%;
+            margin-right: 20px;
+            position: relative;
+            flex-shrink: 0;
+            margin-top: 2px; // Drobne wyrównanie względem tekstu
+            background-color: #fff;
+            transition: all 0.2s ease-in-out;
+        }
+
+        // Zaznaczone kółko (wewnętrzna czarna kropka)
+        input[type="radio"]:checked + .radio-custom-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            background-color: #000;
+            border-radius: 50%;
+        }
+
+        // Teksty po prawej stronie od kółka
+        .radio-text {
+            display: flex;
+            flex-direction: column;
+
+            .radio-main {
+                font-size: 22px;
+                font-weight: 900;
+                text-transform: uppercase; // Wymusza duże litery (np. DUŻY)
+                line-height: 1.2;
+                color: #000;
+            }
+
+            .radio-sub {
+                font-size: 16px;
+                color: #000;
+                margin-top: 8px;
+                font-weight: normal;
+            }
+        }
+    }
+
+    // Wielki żółty przycisk wysyłania
+    .btn-yellow-block {
+        background-color: #ffff00; // Amnesty yellow
+        color: #000;
+        border: none;
+        padding: 18px 40px;
+        font-size: 18px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+        display: inline-block;
+        margin-top: 20px;
+        border-radius: 0; // Brak zaokrągleń według zdjęcia
+        transition: background-color 0.2s ease;
+        
+        &:hover {
+            background-color: $color-dark;
+        }
+    }
+}

@@ -1,0 +1,16 @@
+@use "../includes/index"as *;
+
+.footer {
+  .elementor-widget-social-icons {
+    .elementor-social-icon {
+      transition: background-color 0.2s ease-in-out;
+
+      &:hover {
+        background-color: #5a526b;
+      }
+    }
+  }
+}
+
+@media (width < 1025px) {
+}

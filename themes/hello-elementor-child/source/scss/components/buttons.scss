@@ -1,0 +1,70 @@
+@use "../includes/index" as *;
+
+body {
+	.elementor-widget-button {
+		a.elementor-button {
+		}
+	}
+
+	.amnesty-card-button {
+        display: block;
+        width: fit-content;
+		font-family: 'Oswald', sans-serif;
+        background-color: $color-yellow;
+        color: $color-dark;
+        text-decoration: none;
+        padding: 12px 32px;
+        font-weight: 700;
+        font-size: $font_size; // 18px
+        text-align: center;
+        transition: all 0.2s ease-in-out;
+		border: 1px solid $color-yellow;
+
+        &:hover, &:focus {
+            background-color: $color-dark;
+			border: 1px solid $color-dark;
+            color: $color-yellow;
+            outline: none;
+        }
+    }
+
+    .btn-action {
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        background-color: #ffff00; // Yellow base
+        border: 2px solid #000;
+        border-radius: 30px; // Pill shape
+        padding: 8px 20px;
+        font-weight: 600;
+        font-size: 14px;
+        color: #000;
+        text-decoration: none;
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+
+        &:hover {
+            background-color: $color-inpost;
+        }
+
+        &.status-success {
+            background-color: #84cc16; // Green for success status
+            cursor: default;
+            
+            &:hover {
+                background-color: #84cc16;
+            }
+        }
+    }
+
+    // Top Actions Area
+    .events-top-actions {
+        margin-bottom: $spacing-xlarge; // Adjust to your spacing variables
+        text-align: left;
+        
+        .btn-add-event {
+            font-size: 16px;
+            padding: 12px 24px;
+        }
+    }
+}

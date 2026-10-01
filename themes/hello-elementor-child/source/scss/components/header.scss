@@ -1,0 +1,142 @@
+@use "../includes/index" as *;
+
+/* 
+  HEADER STICKY STYLES
+  Default state is relative. JS will add .is-fixed when scrolling.
+*/
+.header-sticky {
+  /* Ensure smooth transition for visual changes */
+  transition: box-shadow 0.3s ease;
+  width: 100%;
+  z-index: 9999;
+  
+  /* Class applied strictly via JavaScript */
+  &.is-fixed {
+    /* Force fixed positioning and override Elementor defaults */
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    
+    /* Ensure it stretches across the entire screen */
+    width: 100vw !important;
+    
+    /* Optional: add shadow to separate from content below */
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+    background-color: $color-dark;
+  }
+}
+
+header {
+  .elementor-menu-toggle.elementor-active {
+    position: fixed;
+    top: 57px;
+    right: 15px;
+    z-index: 10001;
+    color: $color-grey;
+  }
+
+  .elementor-nav-menu--dropdown.elementor-nav-menu__container {
+    position: fixed !important;
+    top: 0 !important;
+    left: 0 !important;
+    width: 100vw !important;
+    height: 100vh;
+    background-color: rgba(0, 0, 0, 0.6);
+    margin-top: 0;
+
+    .elementor-nav-menu {
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 300px;
+      max-width: 85vw;
+      height: 100vh;
+      background-color: #ffffff;
+      margin: 0;
+      padding: 90px 30px 30px;
+      box-shadow: -5px 0 25px rgba(0, 0, 0, 0.3);
+      overflow-y: auto;
+      animation: slideInFromRight 0.3s ease-out forwards;
+      
+      /* Force vertical layout on mobile dropdown */
+      display: flex !important;
+      flex-direction: column !important;
+
+      .elementor-item {
+        /* Reset mobile item styling to avoid inheriting desktop blocks */
+        width: 100%;
+        background-color: transparent !important;
+        color: $color-dark !important;
+        padding: 15px 0;
+        text-align: left;
+        
+        &:hover {
+          background-color: $color-yellow !important;
+        }
+      }
+      
+      .elementor-item-active {
+        background-color: $color-yellow !important;
+      }
+    }
+  }
+}
+
+/* Mobile menu animation */
+@keyframes slideInFromRight {
+  0% {
+    transform: translateX(100%);
+  }
+  100% {
+    transform: translateX(0);
+  }
+}
+
+/* 
+  CONTRAST MENU - STRICTLY DESKTOP 
+*/
+.contrast-menu {
+  @media (min-width: 769px) {
+    /* Target only the main desktop menu container */
+    .elementor-nav-menu--main {
+      flex-direction: row;
+      width: 100%;
+      margin: 0;
+      padding: 0;
+      
+      li.menu-item {
+        flex: 1 1 0; 
+        display: flex;
+        height: 80px;
+
+        a {
+          width: 100%;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-width: 150px;
+          text-transform: uppercase;
+          text-decoration: none;
+          text-align: center;
+          line-height: 1.2;
+          transition: opacity 0.3s ease;
+        }
+
+        /* Alternate colors logic */
+        &:nth-child(odd) a {
+          background-color: $color-yellow;
+          color: $color-dark;
+        }
+
+        &:nth-child(even) a {
+          background-color: $color-dark;
+          color: $color-yellow !important;
+        }
+
+        &:hover a {
+          opacity: 0.85;
+        }
+      }
+    }
+  }
+}

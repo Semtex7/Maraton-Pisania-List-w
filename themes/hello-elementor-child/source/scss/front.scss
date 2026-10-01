@@ -1,0 +1,19 @@
+@use "variables"as *;
+@use "includes/index"as *;
+@use "components/index"as *;
+// @use "components/language-select";
+
+:root {
+  --post_feat_image_span: 230px;
+  --post_feat_image_span_mobile: 190px;
+}
+
+html,
+body {
+  font-size: $font_size;
+  line-height: 1rem;
+
+  p {
+    font-family: 'Figtree', sans-serif;
+  }
+}

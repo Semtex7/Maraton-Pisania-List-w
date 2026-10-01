@@ -1,0 +1,220 @@
+@use "../variables" as *;
+
+form {
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="search"],
+    textarea,
+    select {
+        width: 100%;
+        padding: $input-padding;
+        border: $border-width-base solid $input-border-color;
+        border-radius: $border-radius-base;
+        font-size: $font_size;
+        font-weight: $input-font-weight;
+        color: $color-dark;
+        background-color: transparent;
+        box-sizing: border-box;
+        margin-bottom: $spacing-xlarge;
+
+        &:focus {
+            outline: none;
+            border-color: $color-highlight;
+        }
+
+        &::placeholder {
+            color: $color-text-secondary;
+            font-weight: normal;
+        }
+    }
+
+    // Textarea specifics
+    textarea {
+        min-height: 120px;
+        resize: vertical;
+    }
+
+    // Global checkbox and radio styles
+    input[type="checkbox"],
+    input[type="radio"] {
+        appearance: none;
+        -webkit-appearance: none;
+        width: $checkbox-size;
+        height: $checkbox-size;
+        border: $border-width-base solid $input-border-color;
+        margin: 0 $spacing-medium 0 0;
+        flex-shrink: 0;
+        position: relative;
+        cursor: pointer;
+        background-color: transparent;
+        outline: none;
+        vertical-align: middle;
+
+        // Inner fill when checked
+        &:checked {
+            &::after {
+                content: '';
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background-color: $color-dark;
+            }
+        }
+        
+        &:focus-visible {
+            box-shadow: 0 0 0 2px $color-highlight;
+        }
+    }
+
+    // Specifics for square checkboxes
+    input[type="checkbox"] {
+        border-radius: 0; 
+        
+        &:checked::after {
+            width: 12px;
+            height: 12px;
+        }
+    }
+
+    // Specifics for rounded radios
+    input[type="radio"] {
+        border-radius: 50%;
+        
+        &:checked::after {
+            width: 12px;
+            height: 12px;
+            border-radius: 50%;
+        }
+    }
+
+    .login-remember {
+        margin-bottom: 20px;
+    }
+}
+
+// Elementor specifics
+.elementor-form {
+  
+  .elementor-field-group {
+    margin-bottom: $spacing-xlarge;
+    
+    input[type="text"],
+    input[type="email"],
+    input[type="password"],
+    input[type="tel"],
+    input[type="url"],
+    input[type="number"],
+    input[type="search"],
+    textarea,
+    select {
+      margin-bottom: 0;
+    }
+  }
+
+  // Align checkboxes nicely with Elementor labels
+  .elementor-field-option {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: $spacing-medium;
+
+    input[type="checkbox"],
+    input[type="radio"] {
+      margin-top: 2px;
+    }
+
+    label {
+      font-size: $font-size-medium;
+      color: $color-dark;
+      line-height: 1.5;
+      font-weight: normal;
+      margin: 0;
+    }
+  }
+}
+
+.new-event-form {
+
+  // 1. Standardize all text, date, and time inputs
+  input[type="text"],
+  input[type="date"],
+  input[type="time"] {
+    width: 100%;
+    box-sizing: border-box;
+    padding: $input-padding; // Using variable from your previous setup
+    border: $border-width-base solid $input-border-color;
+    border-radius: $border-radius-base;
+    font-size: $font_size;
+    color: $color-dark;
+    background-color: transparent;
+    margin-bottom: $spacing-xlarge;
+    height: 50px; // Consistent height across forms
+
+    &:focus {
+      outline: none;
+      border-color: $color-highlight;
+    }
+  }
+
+  label {
+    display: block;
+    margin-bottom: 8px;
+    color: $color-dark;
+
+    .required {
+      color: $color-danger;
+    }
+  }
+
+  .checkbox-wrapper {
+    display: flex;
+    align-items: flex-start;
+    margin-bottom: $spacing-xlarge;
+
+    // Force checkboxes back to their correct square size
+    input[type="checkbox"] {
+      appearance: none;
+      -webkit-appearance: none;
+      width: $checkbox-size !important; // Overriding any inherited 100% width
+      height: $checkbox-size !important;
+      border: $border-width-base solid $input-border-color;
+      border-radius: 0;
+      margin: 2px $spacing-medium 0 0;
+      flex-shrink: 0;
+      position: relative;
+      cursor: pointer;
+      background-color: transparent;
+      outline: none;
+
+      // Custom checkmark fill
+      &:checked::after {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 12px;
+        height: 12px;
+        background-color: $color-dark;
+      }
+    }
+    .checkbox-label-text {
+      font-size: $font-size-medium;
+      color: $color-dark;
+      line-height: 1.4;
+      font-weight: 700;
+      
+      span.description {
+        display: block;
+        font-weight: normal;
+        font-size: $font-size-small;
+        color: $color-text-secondary;
+        margin-top: 4px;
+      }
+    }
+  }
+}

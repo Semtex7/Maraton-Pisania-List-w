@@ -1,0 +1,13 @@
+body.elementor-editor-active [id^="nav-"] {
+    opacity: 1 !important;
+    visibility: visible !important;
+    z-index: 9999;
+    position: relative;
+    margin: 0 auto;
+}
+
+body.elementor-editor-active .desktop_menu {
+  position: relative;
+  opacity: 1;
+  pointer-events: all;
+}

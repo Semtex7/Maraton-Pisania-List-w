@@ -1,0 +1,35 @@
+{
+  "name": "maraton",
+  "version": "1.0",
+  "description": "",
+  "main": "gulpfile.js",
+  "scripts": {
+    "start": "gulp"
+  },
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [],
+  "author": "Mikołaj Kapica",
+  "license": "ISC",
+  "devDependencies": {
+    "browser-sync": "*",
+    "gulp": "*",
+    "gulp-clean-css": "*",
+    "gulp-cli": "*",
+    "gulp-concat": "*",
+    "gulp-rename": "*",
+    "gulp-sass": "*",
+    "gulp-sourcemaps": "^2.6.5",
+    "gulp-terser": "*",
+    "isotope-cells-by-row": "*",
+    "merge-stream": "*"
+  },
+  "dependencies": {
+    "gulp-uglify": "*",
+    "highlight.js": "*",
+    "leaflet": "^1.9.4",
+    "sass": "*"
+  }
+}

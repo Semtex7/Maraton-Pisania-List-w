@@ -1,0 +1,83 @@
+@use "../../includes/index"as *;
+
+.amnesty-petition-card {
+    // Card container setup
+    display: flex;
+    flex-direction: column;
+    width: 320px; 
+    font-family: sans-serif; // Adjust to your theme's main typography
+
+    .amnesty-card-header {
+        position: relative;
+        
+        // Ensure WordPress thumbnails behave correctly and scale
+        img {
+            display: block;
+            width: 100%;
+            height: 200px;
+            object-fit: cover;
+        }
+    }
+
+    .amnesty-card-badge {
+        position: absolute;
+        bottom: 0;
+        left: 30px;
+        background-color: $color-dark; // Or solid #000 if $color-dark is not dark enough
+        color: $color-text-light;
+        padding: $spacing-medium $spacing-xlarge;
+        font-weight: 700;
+        text-transform: uppercase;
+        font-size: $font_size; // 18px from variables
+    }
+
+    .amnesty-card-body {
+        background-color: $color-bg-alert-default; // Maps to #e2e3e5, perfect for this light grey
+        padding: $spacing-xlarge;
+        text-align: left;
+    }
+
+    .amnesty-card-title {
+        color: $color-dark;
+        font-size: 26px;
+        font-weight: 700;
+        margin-top: 0;
+        margin-bottom: $spacing-large;
+        line-height: 1.2;
+    }
+
+    .amnesty-card-progress-wrapper {
+        margin-bottom: $spacing-xxlarge;
+    }
+
+    .amnesty-card-progress-track {
+        background-color: $color-text-light;
+        height: 32px;
+        width: 100%;
+        display: block; // Changed from flex to block to respect child's inline width
+        overflow: hidden; // Keeps the fill inside the bounds
+    }
+
+    .amnesty-card-progress-fill {
+        background-color: $color-yellow;
+        height: 100%;
+        display: block; // Explicit block display
+        transition: width 0.3s ease-in-out;
+    }
+
+    .amnesty-card-progress-text {
+        margin-top: $spacing-small;
+        color: $color-dark;
+        font-size: $font-size-large;
+        font-weight: 700;
+        margin-top: 0;
+        
+        strong {
+            color: $color-dark;
+        }
+    }
+
+    .amnesty-card-button {
+        margin: 0 auto; // Centers the button
+    }
+}

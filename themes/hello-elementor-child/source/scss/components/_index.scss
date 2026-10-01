@@ -1,0 +1,12 @@
+@forward 'default';
+@forward 'header';
+@forward 'footer';
+@forward 'events';
+
+// custom
+@forward 'buttons';
+@forward 'forms';
+
+//widgets
+@forward 'widgets/counter-block';
+@forward 'widgets/petition-card';

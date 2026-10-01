@@ -1,0 +1,70 @@
+$font_size: 18px; // Default font size for desktop
+$breakpoint-desktop: 1024px;
+$breakpoint-tablet: 768px;
+$breakpoint-mobile: 480px;
+
+// Widths
+$width-desktop-menu: 1024px;
+
+$color-grey: #282828;
+$color-yellow: #FFFF00;
+$color-dark: #1A1A1A;
+
+// Colors (Existing & Extended)
+$color-text-secondary: #555;
+$color-text-light: #fff;
+$color-highlight: #0073aa;
+$color-danger: red;
+$color-border-default: #ccc;
+$color-border-light: #ddd;
+$color-border-table: #eee;
+$color-bg-light: #f9f9f9;
+$color-bg-table-header: #f1f1f1;
+$color-bg-empty-state: #f8f9fa;
+$color-success: #28a745;
+$color-cancel: #6c757d;
+$color-info: #17a2b8;
+$color-info-hover: #138496;
+
+// Alerts & Statuses (Merged & Standardized)
+$color-bg-alert-default: #e2e3e5;
+$color-bg-info-light: #f1f9fa;
+$color-bg-success-light: #d4edda; // Consolidated success bg
+$color-border-success: #c3e6cb;
+$color-text-success-dark: #155724;
+
+$color-bg-danger-light: #f8d7da;
+$color-border-danger: #f5c2c7;
+$color-text-danger-dark: #842029;
+
+$color-bg-warning-light: #fff3cd;
+$color-border-warning: #ffeeba;
+$color-text-warning-dark: #856404;
+
+$color-bg-info-alt: #cce5ff;
+$color-text-info-dark: #004085;
+
+// Brands
+$color-inpost: #ffcc00;
+$color-dpd: #dc0032;
+
+// Spacing & Sizes
+$max-width-form: 600px;
+$font-size-small: 13px;
+$font-size-medium: 14px;
+$font-size-large: 15px;
+$spacing-small: 5px;
+$spacing-medium: 10px;
+$spacing-large: 15px;
+$spacing-xlarge: 20px;
+$spacing-xxlarge: 30px;
+
+// Borders
+$border-radius-base: 4px;
+$border-width-base: 1px;
+
+
+$input-padding: 16px 20px;
+$input-border-color: $color-dark;
+$checkbox-size: 24px;
+$input-font-weight: 700;

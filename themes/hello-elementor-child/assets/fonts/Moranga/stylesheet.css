@@ -1,0 +1,90 @@
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga';
+    src: url('FONTSPRINGDEMO-MorangaBlackRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaBlackRegular.woff') format('woff');
+    font-weight: 900;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga';
+    src: url('FONTSPRINGDEMO-MorangaLightRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaLightRegular.woff') format('woff');
+    font-weight: 300;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga Light It';
+    src: url('FONTSPRINGDEMO-MorangaLightItRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaLightItRegular.woff') format('woff');
+    font-weight: 300;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga Black It';
+    src: url('FONTSPRINGDEMO-MorangaBlackItRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaBlackItRegular.woff') format('woff');
+    font-weight: 900;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga Bold It';
+    src: url('FONTSPRINGDEMO-MorangaBoldItRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaBoldItRegular.woff') format('woff');
+    font-weight: bold;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga';
+    src: url('FONTSPRINGDEMO-MorangaBoldRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaBoldRegular.woff') format('woff');
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga It';
+    src: url('FONTSPRINGDEMO-MorangaItRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaItRegular.woff') format('woff');
+    font-weight: normal;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga';
+    src: url('FONTSPRINGDEMO-MorangaRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaRegular.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga Medium It';
+    src: url('FONTSPRINGDEMO-MorangaMediumItRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaMediumItRegular.woff') format('woff');
+    font-weight: 500;
+    font-style: italic;
+    font-display: swap;
+}
+
+@font-face {
+    font-family: 'FONTSPRING DEMO - Moranga';
+    src: url('FONTSPRINGDEMO-MorangaMediumRegular.woff2') format('woff2'),
+        url('FONTSPRINGDEMO-MorangaMediumRegular.woff') format('woff');
+    font-weight: 500;
+    font-style: normal;
+    font-display: swap;
+}
+

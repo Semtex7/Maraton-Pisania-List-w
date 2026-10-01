@@ -1,0 +1,21 @@
+@use "../variables" as *;
+
+body {
+    #content {
+        .page-header {
+            h1.entry-title {
+                display: none !important;
+            }
+        }
+    }
+}
+
+.join-us {
+    .join-us-countdown {
+        
+    }
+}
+
+.amnesty-pin-private {
+    filter: grayscale(100%) opacity(0.85);
+}

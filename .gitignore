@@ -1,0 +1,24 @@
+# Ignore everything by default.
+*
+
+# Never commit installed JavaScript dependencies.
+**/node_modules/
+
+# Keep the repository definition itself.
+!.gitignore
+
+# Keep all plugins.
+!plugins/
+!plugins/**
+
+# Keep only the selected themes.
+!themes/
+themes/*
+!themes/hello-elementor/
+!themes/hello-elementor/**
+!themes/hello-elementor-child/
+!themes/hello-elementor-child/**
+
+# Keep installed dependencies out even inside allowed themes/plugins.
+**/node_modules/
+**/node_modules/**

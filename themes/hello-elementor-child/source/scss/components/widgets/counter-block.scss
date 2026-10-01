@@ -1,0 +1,58 @@
+@use "../../includes/index"as *;
+
+.custom-block-counter-wrapper {
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  
+  /* Space between individual blocks */
+  gap: 12px;
+  
+  /* Reset margins or paddings just in case Elementor adds any globally */
+  margin: 0;
+  padding: 0;
+  
+  /* Target the individual digit spans */
+  .counter-digit {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    
+    /* Background and text color for maximum contrast */
+    background-color: #000000;
+    color: #ffffff;
+    
+    /* Box dimensions matching the reference design */
+    width: 75px;
+    height: 110px;
+    border-radius: 12px;
+    
+    /* Typography settings */
+    font-size: 60px;
+    font-weight: 700;
+    line-height: 1;
+    
+    /* Force monospace spacing for numbers to prevent jittering during animation */
+    font-variant-numeric: tabular-nums;
+    
+    /* Subtle drop shadow for depth */
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.15);
+  }
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+  .custom-block-counter-wrapper {
+    /* Reduce the gap on smaller screens */
+    gap: 8px;
+    
+    .counter-digit {
+      /* Scale down dimensions and font size for mobile devices */
+      width: 50px;
+      height: 80px;
+      font-size: 40px;
+      border-radius: 8px;
+    }
+  }
+}

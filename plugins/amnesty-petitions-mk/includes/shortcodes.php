@@ -31,11 +31,25 @@ function amnesty_petition_render_shortcode( $atts ) {
     // Add dynamic option for signing all petitions (you can add this to settings.php later)
     $consent_sign_all = get_option('amnesty_text_consent_sign_all', 'Chcę automatycznie podpisać akcje w sprawach wszystkich bohaterów tegorocznego Maratonu.' );
     
-    $popup_title      = get_option('amnesty_text_popup_title', 'Dziękujemy!' );
-    $popup_desc       = get_option('amnesty_text_popup_desc', 'Wesprzyj nasze działania:' );
     $link_privacy     = get_option('amnesty_link_privacy', '#' );
-    $link_donate      = get_option('amnesty_link_donate', '#' );
-    $link_campaign    = get_option('amnesty_link_campaign', '#' );
+
+    $thankyou_title          = get_option('amnesty_thankyou_title', 'List napisany!' );
+    $thankyou_subtitle       = get_option('amnesty_thankyou_subtitle', 'Wkrótce przekażemy go na odpowiedni adres.' );
+    $thankyou_count_intro    = get_option('amnesty_thankyou_count_intro', 'Dzięki Tobie mamy już' );
+    $thankyou_count_suffix   = get_option('amnesty_thankyou_count_suffix', 'listów w tej akcji!' );
+    $thankyou_actions_title  = get_option('amnesty_thankyou_actions_title', 'Sprawdź, co możesz jeszcze zrobić:' );
+    $thankyou_events_label   = get_option('amnesty_thankyou_button_events_label', 'ZNAJDŹ WYDARZENIE W TWOJEJ OKOLICY' );
+    $thankyou_donate_label   = get_option('amnesty_thankyou_button_donate_label', 'KUP ZNACZEK' );
+    $thankyou_more_label     = get_option('amnesty_thankyou_button_more_label', 'SPRAWDŹ, CO JESZCZE ROBIMY' );
+    $thankyou_events_link    = get_option('amnesty_thankyou_button_events_link', get_option('amnesty_link_campaign', '#') );
+    $thankyou_donate_link    = get_option('amnesty_thankyou_button_donate_link', get_option('amnesty_link_donate', '#') );
+    $thankyou_more_link      = get_option('amnesty_thankyou_button_more_link', '#' );
+
+    global $wpdb;
+    $table_name = $wpdb->prefix . 'amnesty_signatures';
+    $db_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(id) FROM $table_name WHERE petition_id = %d", $petition_id ) );
+    $extra_letters = (int) get_post_meta( $petition_id, '_amnesty_petition_extra_letters', true );
+    $total_letters = $db_count + $extra_letters;
 
     // Fetch petition specific letter contents
     $appeal_text      = get_post_meta( $petition_id, '_amnesty_petition_appeal', true );
@@ -104,14 +118,18 @@ function amnesty_petition_render_shortcode( $atts ) {
     </div>
 
     <!-- Thank you message container (hidden by default) -->
-    <div id="amnesty-thank-you-container-<?php echo esc_attr( $petition_id ); ?>" style="display: none; text-align: center; padding: 40px 20px; background: #f9f9f9; border-radius: 8px;">
-        <h3 style="margin-bottom: 15px; color: #000; text-transform: uppercase; font-weight: 900;"><?php echo esc_html($popup_title); ?></h3>
-        <p style="font-size: 1.1em; margin-bottom: 25px;"><?php echo esc_html($popup_desc); ?></p>
-        
-        <div style="display: flex; justify-content: center; gap: 15px; flex-wrap: wrap;">
-            <a href="<?php echo esc_url($link_donate); ?>" class="amnesty-btn-popup" target="_blank" style="padding: 12px 24px; background: #ffff00; color: #000; font-weight: bold; text-decoration: none; text-transform: uppercase;">Kup znaczek</a>
-            <a href="<?php echo esc_url($link_campaign); ?>" class="amnesty-btn-popup" target="_blank" style="padding: 12px 24px; background: #000; color: #fff; font-weight: bold; text-decoration: none; text-transform: uppercase;">Lista wydarzeń</a>
-            <a href="<?php echo esc_url( home_url() ); ?>" class="amnesty-btn-popup" style="padding: 12px 24px; background: #ccc; color: #000; font-weight: bold; text-decoration: none; text-transform: uppercase;">Strona główna</a>
+    <div id="amnesty-thank-you-container-<?php echo esc_attr( $petition_id ); ?>" class="amnesty-thank-you-container">
+        <h3 class="amnesty-thank-you-title"><?php echo esc_html( $thankyou_title ); ?></h3>
+        <p class="amnesty-thank-you-subtitle"><?php echo esc_html( $thankyou_subtitle ); ?></p>
+        <p class="amnesty-thank-you-count-intro"><?php echo esc_html( $thankyou_count_intro ); ?></p>
+        <p class="amnesty-thank-you-count"><?php echo esc_html( number_format_i18n( $total_letters ) ); ?></p>
+        <p class="amnesty-thank-you-count-suffix"><?php echo esc_html( $thankyou_count_suffix ); ?></p>
+        <p class="amnesty-thank-you-actions-title"><?php echo esc_html( $thankyou_actions_title ); ?></p>
+
+        <div class="amnesty-thank-you-actions">
+            <a href="<?php echo esc_url( $thankyou_events_link ); ?>" class="amnesty-btn-popup" target="_blank" rel="noopener"><?php echo esc_html( $thankyou_events_label ); ?></a>
+            <a href="<?php echo esc_url( $thankyou_donate_link ); ?>" class="amnesty-btn-popup" target="_blank" rel="noopener"><?php echo esc_html( $thankyou_donate_label ); ?></a>
+            <a href="<?php echo esc_url( $thankyou_more_link ); ?>" class="amnesty-btn-popup" target="_blank" rel="noopener"><?php echo esc_html( $thankyou_more_label ); ?></a>
         </div>
     </div>
 

@@ -5,13 +5,13 @@
 function maraton_wp_enqueue_front()
 {
     // WP ENQUEUE CSS
-    wp_enqueue_style('maraton-style', get_stylesheet_directory_uri() . '/style.css', [], MARATON_VERSION);
     wp_enqueue_style(
         'maraton-css-front',
         get_stylesheet_directory_uri() . '/dist/front.min.css',
         [],
         MARATON_VERSION
     );
+    wp_enqueue_style('maraton-style', get_stylesheet_directory_uri() . '/style.css', [], MARATON_VERSION);
 
     // WP ENQUEUE JS
     wp_enqueue_script('jquery');  // Ensure WordPress loads jQuery before your script

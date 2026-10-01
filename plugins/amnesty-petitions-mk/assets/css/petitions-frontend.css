@@ -1,33 +1,47 @@
 /* =========================================================
    Single Petition Hero Grid 
 ========================================================= */
+.amnesty-single-petition {
+    width: 100% !important;
+    max-width: none !important;
+}
+
 .amnesty-petition-hero-grid {
     display: grid;
-    grid-template-columns: 1fr 1fr;
-    gap: 50px;
-    margin-bottom: 60px;
-    margin-top: 100px;
+    grid-template-columns: 37% 1fr;
+    gap: 30px;
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto 60px;
     align-items: flex-start;
+}
+
+.amnesty-petition-form-section {
+    width: 100%;
+    max-width: 1200px;
+    margin: 0 auto;
 }
 
 .amnesty-hero-image img {
     width: 100%;
+    aspect-ratio: 1.055 / 1;
     height: auto;
+    object-fit: cover;
     display: block;
-    border-radius: 4px;
+    border-radius: 0;
 }
 
 .amnesty-hero-info .entry-title {
     font-weight: 900;
     text-transform: uppercase;
-    font-size: 2.8rem;
+    font-size: 36px;
     margin: 0 0 10px 0;
     line-height: 1.1;
     color: #000;
 }
 
 .amnesty-country-label {
-    font-size: 1.8rem;
+    font-size: 30px;
     font-weight: 900;
     margin: 0 0 25px 0;
     color: #000;
@@ -35,21 +49,26 @@
 
 .amnesty-main-content, 
 .amnesty-short-desc {
-    font-size: 15px;
-    line-height: 1.6;
+    font-size: 18px;
+    line-height: 1.55;
     margin-bottom: 30px;
     color: #333;
 }
 
 .amnesty-btn-video {
-    display: inline-block;
-    padding: 15px 40px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 310px !important;
+    min-width: 310px !important;
+    min-height: 84px;
+    padding: 20px 32px;
     background: #000;
     color: #fff;
     border: none;
     cursor: pointer;
     font-weight: 900;
-    font-size: 18px;
+    font-size: 30px !important;
     text-transform: uppercase;
     transition: background 0.3s;
 }
@@ -139,6 +158,7 @@
     font-family: inherit;
     font-size: 15px;
     line-height: 1.6;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
 /* =========================================================
@@ -160,6 +180,7 @@
     box-sizing: border-box; 
     font-family: inherit;
     font-size: 15px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
 /* =========================================================
@@ -169,31 +190,31 @@
 .amnesty-petition-rodo label,
 .amnesty-petition-checkbox-group,
 .amnesty-sign-all-wrapper label {
-    display: flex !important;
-    gap: 15px !important;
-    align-items: flex-start !important;
+    display: grid !important;
+    grid-template-columns: 22px minmax(0, 1fr);
+    gap: 12px !important;
+    align-items: start !important;
     cursor: pointer;
-    margin-bottom: 5px;
+    margin: 0 0 12px !important;
 }
 
 /* Nadpisanie natywnych checkboxów na czysty biały styl */
+.amnesty-petition-rodo input[type="checkbox"],
+.amnesty-petition-checkbox-group input[type="checkbox"],
+.amnesty-sign-all-wrapper input[type="checkbox"],
 .amnesty-col-right input[type="checkbox"] {
     appearance: none;
     -webkit-appearance: none;
-    width: 26px !important;
-    height: 26px !important;
+    width: 22px !important;
+    height: 22px !important;
     background-color: #fff;
-    border: none;
-    border-radius: 50%; /* Domyślnie okrągłe */
+    border: 2px solid #000;
+    border-radius: 0 !important;
     cursor: pointer;
     position: relative;
     flex-shrink: 0;
-    margin-top: 3px !important;
-}
-
-/* Kwadratowy wygląd dla ostatniego checkboxa (Sign All) */
-.amnesty-sign-all-wrapper input[type="checkbox"] {
-    border-radius: 4px;
+    margin: 2px 0 0 !important;
+    padding: 0;
 }
 
 /* Czarna kropka/wypełnienie gdy zaznaczony */
@@ -204,7 +225,6 @@
     transform: translate(-50%, -50%);
     width: 12px; height: 12px;
     background-color: #000;
-    border-radius: inherit;
 }
 
 .amnesty-col-right span,
@@ -215,6 +235,11 @@
     color: #000;
     font-weight: 500;
     margin: 0;
+}
+
+.amnesty-petition-rodo span {
+    font-size: 12px;
+    line-height: 1.35;
 }
 
 .amnesty-petition-rodo p {
@@ -421,21 +446,209 @@
     .amnesty-petition-hero-grid {
         grid-template-columns: 1fr;
         gap: 30px;
+        width: calc(100% - 20px);
+    }
+    .amnesty-petition-form-section {
+        width: calc(100% - 20px);
     }
 }
 @media (max-width: 768px) {
     .amnesty-form-grid {
         grid-template-columns: 1fr;
-        gap: 40px;
+        gap: 24px;
     }
     .amnesty-letter-type-toggle {
+        display: grid;
+        grid-template-columns: 1fr;
         max-width: 100%;
     }
+    .amnesty-toggle-btn {
+        min-height: 56px;
+        padding: 14px 8px !important;
+        font-size: 14px;
+        line-height: 1.15;
+    }
     .amnesty-petition-form {
-        padding: 40px 30px 120px 30px;
+        padding: 24px 16px 92px;
+    }
+    .amnesty-hero-info .entry-title {
+        font-size: 30px;
+    }
+    .amnesty-country-label {
+        font-size: 26px;
+    }
+    .amnesty-main-content,
+    .amnesty-short-desc {
+        font-size: 16px;
+    }
+    .amnesty-btn-video {
+        width: 100% !important;
+        min-width: 0 !important;
+        min-height: 58px;
+        padding: 14px 20px;
+        font-size: 20px !important;
+    }
+    .amnesty-section-label {
+        margin-bottom: 16px;
+        font-size: 18px;
+    }
+    .amnesty-col-left textarea {
+        min-height: 260px;
+        padding: 16px;
+        border-radius: 12px;
+        font-size: 14px;
+    }
+    .amnesty-col-right {
+        gap: 12px;
+    }
+    .amnesty-col-right input[type="text"],
+    .amnesty-col-right input[type="email"],
+    .amnesty-col-right input[type="tel"] {
+        height: 50px;
+        padding: 12px 14px;
+        font-size: 14px;
+        margin-bottom: 0;
+    }
+    .amnesty-col-right span,
+    .amnesty-col-right strong,
+    .amnesty-petition-rodo p {
+        font-size: 13px;
+    }
+    .amnesty-petition-rodo span {
+        font-size: 12px;
+    }
+    .amnesty-petition-rodo p {
+        margin-bottom: 12px;
     }
     .amnesty-petition-submit-btn {
-        width: calc(100% - 60px) !important;
-        min-width: auto;
+        bottom: 24px;
+        width: calc(100% - 32px) !important;
+        min-width: 0;
+        padding: 14px 20px;
+        font-size: 18px;
+    }
+}
+
+/* Thank-you state */
+.amnesty-thank-you-container {
+    display: none;
+    max-width: 640px;
+    margin: 0 auto;
+    padding: 46px 24px 40px;
+    box-sizing: border-box;
+    text-align: center;
+    color: #000;
+}
+
+.amnesty-thank-you-container p,
+.amnesty-thank-you-container h3 {
+    margin-right: 0;
+    margin-left: 0;
+}
+
+.amnesty-thank-you-title {
+    margin-top: 0;
+    margin-bottom: 16px;
+    font-size: 58px;
+    line-height: 1.05;
+    font-weight: 900;
+}
+
+.amnesty-thank-you-subtitle {
+    margin-top: 0;
+    margin-bottom: 52px;
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.amnesty-thank-you-count-intro,
+.amnesty-thank-you-actions-title {
+    margin-top: 0;
+    font-size: 24px;
+    line-height: 1.2;
+    font-weight: 700;
+}
+
+.amnesty-thank-you-count-intro {
+    margin-bottom: 12px;
+}
+
+.amnesty-thank-you-count {
+    margin-top: 0;
+    margin-bottom: 10px;
+    font-size: 82px;
+    line-height: 0.95;
+    font-weight: 900;
+}
+
+.amnesty-thank-you-count-suffix {
+    margin-top: 0;
+    margin-bottom: 56px;
+    font-size: 28px;
+    line-height: 1.1;
+    font-weight: 700;
+}
+
+.amnesty-thank-you-actions-title {
+    margin-bottom: 42px;
+}
+
+.amnesty-thank-you-actions {
+    display: grid;
+    gap: 20px;
+    width: 100%;
+}
+
+.amnesty-thank-you-actions .amnesty-btn-popup {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 76px;
+    padding: 16px 20px;
+    box-sizing: border-box;
+    background: #000;
+    color: #fff;
+    font-size: 22px;
+    line-height: 1.1;
+    font-weight: 900;
+    text-align: center;
+    text-decoration: none;
+    text-transform: uppercase;
+    transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.amnesty-thank-you-actions .amnesty-btn-popup:hover,
+.amnesty-thank-you-actions .amnesty-btn-popup:focus {
+    background: #ffff00;
+    color: #000;
+}
+
+@media (max-width: 600px) {
+    .amnesty-thank-you-container {
+        padding: 34px 16px 28px;
+    }
+
+    .amnesty-thank-you-title {
+        font-size: 44px;
+    }
+
+    .amnesty-thank-you-subtitle,
+    .amnesty-thank-you-count-intro,
+    .amnesty-thank-you-actions-title {
+        font-size: 20px;
+    }
+
+    .amnesty-thank-you-count {
+        font-size: 64px;
+    }
+
+    .amnesty-thank-you-count-suffix {
+        font-size: 24px;
+    }
+
+    .amnesty-thank-you-actions .amnesty-btn-popup {
+        min-height: 68px;
+        font-size: 18px;
     }
 }

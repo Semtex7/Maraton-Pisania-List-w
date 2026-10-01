@@ -1,8 +1,10 @@
 <?php 
 
-// Global variable for registration errors
+// Global form errors
 global $registration_error;
 $registration_error = '';
+global $login_error;
+$login_error = '';
 
 // ====================================================================
 // 1. SHORTCODE: LOGIN FORM
@@ -11,34 +13,91 @@ $registration_error = '';
 add_shortcode('event_login', 'render_login_shortcode');
 
 function render_login_shortcode() {
+    global $login_error;
+
     if ( is_user_logged_in() ) {
         return '<script>window.location.href="' . esc_url(home_url('/panel/')) . '";</script>';
     }
-    
+
+    $login_value = isset( $_POST['log'] ) ? sanitize_text_field( wp_unslash( $_POST['log'] ) ) : '';
+    $remember_value = ! empty( $_POST['rememberme'] );
+
     ob_start();
-    
-    wp_login_form(array(
-        'redirect'       => home_url('/panel/'), 
-        'label_username' => 'Nazwa użytkownika lub E-mail',
-        'label_password' => 'Hasło',
-        'label_remember' => 'Zapamiętaj mnie',
-        'label_log_in'   => 'Zaloguj się',
-        'form_id'        => 'event-login-form'
-    ));
-    
-    $login_form_html = ob_get_clean();
-    
-    $login_form_html = str_replace(
-        'class="button button-primary"', 
-        'class="button button-primary amnesty-card-button"', 
-        $login_form_html
-    );
-    
-    return $login_form_html;
+
+    ?>
+    <div class="event-auth-panel event-login-panel">
+        <h3>Logowanie</h3>
+        <?php if ( ! empty( $login_error ) ) : ?>
+            <div class="event-login-error" role="alert"><strong>Logowanie nieudane:</strong> <?php echo esc_html( $login_error ); ?></div>
+        <?php endif; ?>
+
+    <form name="event-login-form" id="event-login-form" class="event-login-form" action="<?php echo esc_url( get_permalink() ); ?>" method="post">
+        <?php wp_nonce_field( 'event_login_action', 'event_login_nonce' ); ?>
+
+        <p class="login-username">
+            <label for="user_login">Nazwa użytkownika lub e-mail</label>
+            <input type="text" name="log" id="user_login" autocomplete="username" value="<?php echo esc_attr( $login_value ); ?>" required>
+        </p>
+
+        <p class="login-password">
+            <label for="user_pass">Hasło</label>
+            <input type="password" name="pwd" id="user_pass" autocomplete="current-password" required>
+        </p>
+
+        <p class="login-remember">
+            <label for="rememberme">
+                <input name="rememberme" type="checkbox" id="rememberme" value="forever" <?php checked( $remember_value ); ?>>
+                Zapamiętaj mnie
+            </label>
+        </p>
+
+        <p class="login-submit">
+            <button type="submit" name="submit_login" class="amnesty-card-button">Zaloguj się</button>
+        </p>
+    </form>
+    </div>
+    <?php
+
+    return ob_get_clean();
 }
 
 // ====================================================================
-// 2. HANDLE USER REGISTRATION
+// 2. HANDLE USER LOGIN
+// ====================================================================
+
+add_action( 'template_redirect', 'handle_user_login', 1 );
+
+function handle_user_login() {
+    global $login_error;
+
+    if ( is_user_logged_in() || 'POST' !== $_SERVER['REQUEST_METHOD'] || ! isset( $_POST['submit_login'] ) ) {
+        return;
+    }
+
+    if ( ! isset( $_POST['event_login_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['event_login_nonce'] ) ), 'event_login_action' ) ) {
+        $login_error = 'Sesja formularza wygasła. Odśwież stronę i spróbuj ponownie.';
+        return;
+    }
+
+    $credentials = array(
+        'user_login'    => isset( $_POST['log'] ) ? sanitize_text_field( wp_unslash( $_POST['log'] ) ) : '',
+        'user_password' => isset( $_POST['pwd'] ) ? (string) wp_unslash( $_POST['pwd'] ) : '',
+        'remember'      => ! empty( $_POST['rememberme'] ),
+    );
+
+    $user = wp_signon( $credentials, is_ssl() );
+
+    if ( is_wp_error( $user ) ) {
+        $login_error = 'Nie udało się zalogować. Sprawdź dane i spróbuj ponownie.';
+        return;
+    }
+
+    wp_safe_redirect( home_url( '/panel/' ) );
+    exit;
+}
+
+// ====================================================================
+// 3. HANDLE USER REGISTRATION
 // ====================================================================
 
 add_action('template_redirect', 'handle_user_registration');
@@ -92,7 +151,7 @@ function handle_user_registration() {
 }
 
 // ====================================================================
-// 3. SHORTCODE: REGISTRATION FORM
+// 4. SHORTCODE: REGISTRATION FORM
 // ====================================================================
 
 add_shortcode('event_registration', 'render_registration_shortcode');
@@ -105,19 +164,18 @@ function render_registration_shortcode() {
         return '<div>Jesteś już zalogowany! <a href="' . home_url('/panel/') . '">Przejdź do panelu</a></div>';
     }
 
+    $val_login = isset( $_POST['user_login'] ) ? esc_attr( wp_unslash( $_POST['user_login'] ) ) : '';
+    $val_email = isset( $_POST['user_email'] ) ? esc_attr( wp_unslash( $_POST['user_email'] ) ) : '';
+
     ob_start();
 
-    // Display registration errors if any exist
-    if ( ! empty($registration_error) ) {
-        echo '<div class="register-error"><strong>Błąd rejestracji:</strong> ' . esc_html($registration_error) . '</div>';
-    }
-
-    // Remember input values after failed validation
-    $val_login = isset($_POST['user_login']) ? esc_attr($_POST['user_login']) : '';
-    $val_email = isset($_POST['user_email']) ? esc_attr($_POST['user_email']) : '';
-
-    // Registration form HTML structured exactly like wp_login_form output
     ?>
+    <div class="event-auth-panel event-registration-panel">
+        <h3>Rejestracja</h3>
+        <?php if ( ! empty($registration_error) ) : ?>
+            <div class="register-error"><strong>Błąd rejestracji:</strong> <?php echo esc_html( $registration_error ); ?></div>
+        <?php endif; ?>
+
     <form method="post" action="" class="new-event-form">
         <?php wp_nonce_field('register_action', 'registration_nonce'); ?>
         
@@ -140,6 +198,7 @@ function render_registration_shortcode() {
             <button type="submit" name="submit_registration" class="amnesty-card-button">Zarejestruj się</button>
         </p>
     </form>
+    </div>
     <?php
     
     return ob_get_clean();

@@ -35,11 +35,22 @@ function amnesty_register_global_settings() {
         'amnesty_text_consent_newsletter' => 'textarea', 
         'amnesty_text_popup_title'        => 'text',
         'amnesty_text_popup_desc'         => 'textarea',
+        'amnesty_thankyou_title'          => 'text',
+        'amnesty_thankyou_subtitle'       => 'text',
+        'amnesty_thankyou_count_intro'    => 'text',
+        'amnesty_thankyou_count_suffix'   => 'text',
+        'amnesty_thankyou_actions_title'  => 'text',
+        'amnesty_thankyou_button_events_label' => 'text',
+        'amnesty_thankyou_button_donate_label' => 'text',
+        'amnesty_thankyou_button_more_label' => 'text',
         
         // URLs
         'amnesty_link_privacy'            => 'url',
         'amnesty_link_donate'             => 'url',
         'amnesty_link_campaign'           => 'url',
+        'amnesty_thankyou_button_events_link' => 'url',
+        'amnesty_thankyou_button_donate_link' => 'url',
+        'amnesty_thankyou_button_more_link' => 'url',
         'amnesty_sf_instance_url'         => 'url',
         
         // API Keys (Standard text strings)
@@ -109,6 +120,14 @@ function amnesty_render_global_settings_page() {
                 amnesty_field_row(__( 'Zgoda Newsletter', 'amnesty-petitions' ), '<textarea name="amnesty_text_consent_newsletter" style="width:100%">'.esc_textarea(get_option('amnesty_text_consent_newsletter', 'Chcę otrzymywać informacje...')).'</textarea>');
                 amnesty_field_row(__( 'Tytuł Pop-up', 'amnesty-petitions' ), '<input type="text" name="amnesty_text_popup_title" value="'.esc_attr(get_option('amnesty_text_popup_title', 'Dziękujemy!')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Opis Pop-up', 'amnesty-petitions' ), '<textarea name="amnesty_text_popup_desc" style="width:100%">'.esc_textarea(get_option('amnesty_text_popup_desc', 'Wesprzyj nas:')).'</textarea>');
+                amnesty_field_row(__( 'Podziękowanie: tytuł', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_title" value="'.esc_attr(get_option('amnesty_thankyou_title', 'List napisany!')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: podtytuł', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_subtitle" value="'.esc_attr(get_option('amnesty_thankyou_subtitle', 'Wkrótce przekażemy go na odpowiedni adres.')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: tekst przed licznikiem', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_count_intro" value="'.esc_attr(get_option('amnesty_thankyou_count_intro', 'Dzięki Tobie mamy już')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: tekst po liczniku', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_count_suffix" value="'.esc_attr(get_option('amnesty_thankyou_count_suffix', 'listów w tej akcji!')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: nagłówek przycisków', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_actions_title" value="'.esc_attr(get_option('amnesty_thankyou_actions_title', 'Sprawdź, co możesz jeszcze zrobić:')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Przycisk: wydarzenia', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_button_events_label" value="'.esc_attr(get_option('amnesty_thankyou_button_events_label', 'ZNAJDŹ WYDARZENIE W TWOJEJ OKOLICY')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Przycisk: kup znaczek', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_button_donate_label" value="'.esc_attr(get_option('amnesty_thankyou_button_donate_label', 'KUP ZNACZEK')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Przycisk: więcej działań', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_button_more_label" value="'.esc_attr(get_option('amnesty_thankyou_button_more_label', 'SPRAWDŹ, CO JESZCZE ROBIMY')).'" style="width:100%" />');
             ?>
             </table>
             
@@ -118,6 +137,9 @@ function amnesty_render_global_settings_page() {
                 amnesty_field_row(__( 'Link Prywatności', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_privacy" value="'.esc_attr(get_option('amnesty_link_privacy', '#')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Link Darowizny', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_donate" value="'.esc_attr(get_option('amnesty_link_donate', '#')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Link Kampanii', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_campaign" value="'.esc_attr(get_option('amnesty_link_campaign', '#')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link wydarzeń', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_events_link" value="'.esc_attr(get_option('amnesty_thankyou_button_events_link', get_option('amnesty_link_campaign', '#'))).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link kupna znaczka', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_donate_link" value="'.esc_attr(get_option('amnesty_thankyou_button_donate_link', get_option('amnesty_link_donate', '#'))).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link więcej działań', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_more_link" value="'.esc_attr(get_option('amnesty_thankyou_button_more_link', '#')).'" style="width:100%" />');
             ?>
             </table>
 

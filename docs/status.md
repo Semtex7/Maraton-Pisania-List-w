@@ -31,8 +31,8 @@ Dokumentacja opisuje te zmiany jako aktualny stan roboczy, ale nie potwierdza ic
 
 - Brak testów automatycznych i CI.
 - Nie wykonano pełnego buildu Gulp jako części dokumentowania.
-- Nie wykonano rzeczywistej wysyłki podpisu do Salesforce.
-- Nie testowano poprawnego logowania z prawdziwym kontem.
+- Wykonano testowy podpis na lokalnej petycji z połączeniem do Salesforce Sandbox; panel podpisów pokazał status synchronizacji.
+- Zweryfikowano poprawne logowanie kontem testowym i przekierowanie do `/panel/`.
 - Lokalne narzędzie przeglądarkowe zgłaszało błąd certyfikatu dla części zasobów HTTPS z `uploads`; nie zmieniano tego w ramach dokumentacji.
 
 ## Otwarte kwestie

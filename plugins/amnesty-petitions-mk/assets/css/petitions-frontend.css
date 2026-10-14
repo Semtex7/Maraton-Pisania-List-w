@@ -4,6 +4,7 @@
 .amnesty-single-petition {
     width: 100% !important;
     max-width: none !important;
+    font-family: "Oswald", sans-serif;
 }
 
 .amnesty-petition-hero-grid {
@@ -12,7 +13,8 @@
     gap: 30px;
     width: 100%;
     max-width: 1200px;
-    margin: 0 auto 60px;
+    padding: 0 24px;
+    margin: 80px auto 60px;
     align-items: flex-start;
 }
 
@@ -20,6 +22,7 @@
     width: 100%;
     max-width: 1200px;
     margin: 0 auto;
+    padding: 0 24px;
 }
 
 .amnesty-hero-image img {
@@ -34,17 +37,19 @@
 .amnesty-hero-info .entry-title {
     font-weight: 900;
     text-transform: uppercase;
-    font-size: 36px;
+    font-size: 40px;
     margin: 0 0 10px 0;
-    line-height: 1.1;
+    line-height: 1;
     color: #000;
 }
 
 .amnesty-country-label {
-    font-size: 30px;
+    font-size: 20px; /* Zmniejszono z 30px */
     font-weight: 900;
     margin: 0 0 25px 0;
-    color: #000;
+    color: #555;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
 }
 
 .amnesty-main-content, 
@@ -55,20 +60,27 @@
     color: #333;
 }
 
+/* Marginesy dolne dla akapitów, by zapobiec zlewaniu się tekstu */
+.amnesty-main-content p,
+.amnesty-short-desc p {
+    margin-bottom: 15px;
+}
+
 .amnesty-btn-video {
+    margin-top: 24px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 310px !important;
-    min-width: 310px !important;
-    min-height: 84px;
-    padding: 20px 32px;
+    min-width: 210px !important;
+    min-height: 54px;
+    padding: 12px 22px;
     background: #000;
     color: #fff;
     border: none;
     cursor: pointer;
     font-weight: 900;
-    font-size: 30px !important;
+    font-size: 20px !important;
     text-transform: uppercase;
     transition: background 0.3s;
 }
@@ -119,17 +131,17 @@
 ========================================================= */
 .amnesty-petition-form { 
     background-color: #FFFF00;
-    padding: 50px 50px 140px 50px; /* Dolny padding robi miejsce na przycisk */
+    padding: 50px 50px 140px 50px; 
     border: 2px solid #000;
     border-radius: 0;
-    position: relative; /* Pozwala wyśrodkować przycisk */
+    position: relative; 
 }
 
 /* Grid Layout (2 Columns) */
 .amnesty-form-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
-    gap: 80px; /* Zwiększony odstęp między kolumnami */
+    gap: 80px; 
 }
 
 /* Section Labels */
@@ -140,7 +152,7 @@
     display: block;
     margin-bottom: 30px;
     color: #000;
-    text-align: center; /* Zgodnie z makietą */
+    text-align: center; 
 }
 
 /* =========================================================
@@ -152,12 +164,13 @@
     min-height: 480px; 
     background: #fff; 
     border: none;
-    border-radius: 20px; /* Mocne zaokrąglenie */
+    border-radius: 20px; 
     padding: 30px;
     box-sizing: border-box;
     font-family: inherit;
     font-size: 15px;
     line-height: 1.6;
+    font-weight: 400 !important; /* Odboldowanie tekstu */
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
 }
 
@@ -167,7 +180,7 @@
 .amnesty-col-right {
     display: flex;
     flex-direction: column;
-    gap: 15px;
+    gap: 8px;
 }
 
 .amnesty-col-right input[type="text"],
@@ -186,7 +199,6 @@
 /* =========================================================
    Checkboxes & RODO
 ========================================================= */
-/* Normalizacja układu dla checkboxów */
 .amnesty-petition-rodo label,
 .amnesty-petition-checkbox-group,
 .amnesty-sign-all-wrapper label {
@@ -198,7 +210,6 @@
     margin: 0 0 12px !important;
 }
 
-/* Nadpisanie natywnych checkboxów na czysty biały styl */
 .amnesty-petition-rodo input[type="checkbox"],
 .amnesty-petition-checkbox-group input[type="checkbox"],
 .amnesty-sign-all-wrapper input[type="checkbox"],
@@ -217,7 +228,6 @@
     padding: 0;
 }
 
-/* Czarna kropka/wypełnienie gdy zaznaczony */
 .amnesty-col-right input[type="checkbox"]:checked::after {
     content: '';
     position: absolute;
@@ -230,7 +240,7 @@
 .amnesty-col-right span,
 .amnesty-col-right strong,
 .amnesty-petition-rodo p {
-    font-size: 14px;
+    font-size: 16px;
     line-height: 1.5;
     color: #000;
     font-weight: 500;
@@ -238,13 +248,13 @@
 }
 
 .amnesty-petition-rodo span {
-    font-size: 12px;
+    font-size: 16px;
     line-height: 1.35;
 }
 
 .amnesty-petition-rodo p {
-    margin-bottom: 20px;
-    font-size: 12px;
+    margin-bottom: 10px;
+    font-size: 16px;
 }
 
 .amnesty-petition-rodo a {
@@ -258,7 +268,7 @@
 ========================================================= */
 .amnesty-petition-submit-btn, .amnesty-btn-video { 
     position: absolute;
-    bottom: 50px; /* Pozycjonowanie względem całego formularza */
+    bottom: 50px; 
     left: 50%;
     transform: translateX(-50%);
     background-color: #000 !important; 
@@ -266,7 +276,7 @@
     text-transform: uppercase; 
     font-weight: 900; 
     font-size: 22px;
-    width: auto !important; /* Nadpisanie inline style z PHP */
+    width: auto !important; 
     min-width: 300px;
     padding: 20px 40px; 
     border: 2px solid #000 !important; 
@@ -650,5 +660,148 @@
     .amnesty-thank-you-actions .amnesty-btn-popup {
         min-height: 68px;
         font-size: 18px;
+    }
+}
+
+/* =========================================================
+   Digital Materials (Downloads)
+========================================================= */
+.digital-materials-wrapper .digital-materials-category-frame {
+    border: 2px solid #000;
+    padding: 20px;
+    margin-bottom: 30px;
+    border-radius: 8px;
+}
+
+.digital-materials-wrapper .digital-materials-category-title {
+    margin-top: 0;
+    border-bottom: 1px solid #eee;
+    padding-bottom: 10px;
+    margin-bottom: 20px;
+}
+
+.digital-materials-wrapper .digital-materials-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: 15px;
+}
+
+.digital-materials-wrapper .btn-digital-download {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    background: #f9f9f9;
+    padding: 10px 15px;
+    border: 1px solid #ddd;
+    text-decoration: none;
+    color: #000;
+    border-radius: 4px;
+    transition: background-color 0.2s ease;
+}
+
+.digital-materials-wrapper .btn-digital-download:hover {
+    background-color: #eee;
+}
+
+.digital-materials-wrapper .download-text {
+    font-weight: bold;
+    font-size: 14px;
+}
+
+.digital-materials-wrapper .download-icon {
+    background: #ffff00;
+    padding: 5px 10px;
+    border-radius: 50%;
+    font-weight: bold;
+}
+
+.digital-materials-wrapper .download-icon::after {
+    content: '\2193'; 
+}
+
+/* =========================================================
+   Single Petition: Additional materials (downloads)
+========================================================= */
+.amnesty-petition-materials-section {
+    width: 100%;
+    max-width: 1200px;
+    margin: 60px auto;
+    padding: 0 24px;
+}
+
+.amnesty-materials-title {
+    font-weight: 900;
+    text-transform: uppercase;
+    margin: 0 0 24px;
+}
+
+.amnesty-materials-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+    gap: 15px;
+}
+
+.amnesty-material-link {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 18px;
+    border: 2px solid #000;
+    color: #000;
+    text-decoration: none;
+    font-weight: bold;
+    transition: background-color 0.2s ease;
+}
+
+.amnesty-material-link:hover,
+.amnesty-material-link:focus {
+    background-color: #ffff00;
+    color: #000;
+}
+
+.amnesty-material-ext {
+    flex-shrink: 0;
+    background: #000;
+    color: #fff;
+    font-size: 12px;
+    padding: 3px 8px;
+}
+
+/* =========================================================
+   Petition archive: list of current actions (/petycja/)
+========================================================= */
+.amnesty-petitions-archive {
+    width: 100%;
+    max-width: 1200px;
+    margin: 60px auto;
+    padding: 0 24px;
+}
+
+.amnesty-petitions-archive .amnesty-archive-title {
+    font-weight: 900;
+    text-transform: uppercase;
+    margin: 0 0 30px;
+}
+
+.amnesty-petitions-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 30px;
+    justify-items: center;
+}
+
+@media (max-width: 992px) {
+    .amnesty-petitions-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+
+@media (max-width: 600px) {
+    .amnesty-petitions-grid {
+        grid-template-columns: 1fr;
     }
 }

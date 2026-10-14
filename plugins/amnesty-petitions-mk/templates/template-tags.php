@@ -17,8 +17,8 @@ function amnesty_get_petition_card_html( $post_id ) {
     
     // Get thumbnail (fallback to placeholder if empty)
     $thumbnail = get_the_post_thumbnail( $post_id, 'medium_large', array( 'class' => 'amnesty-card-img' ) );
-    if ( empty( $thumbnail ) ) {
-        $thumbnail = '<img src="' . esc_url( AMNESTY_PETITIONS_URL . 'assets/images/placeholder.jpg' ) . '" class="amnesty-card-img" alt="Placeholder">';
+    if ( empty( $thumbnail ) && file_exists( AMNESTY_PETITIONS_PATH . 'assets/images/placeholder.jpg' ) ) {
+        $thumbnail = '<img src="' . esc_url( AMNESTY_PETITIONS_URL . 'assets/images/placeholder.jpg' ) . '" class="amnesty-card-img" alt="">';
     }
 
     // Fetch custom meta fields

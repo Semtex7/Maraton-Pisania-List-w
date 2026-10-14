@@ -1,0 +1,297 @@
+@use "../includes/index" as *;
+
+// Organizer panel: materials — downloads ([digital_materials], global materials)
+// and the materials order form ([materials_order], DPD carriers)
+
+// --------------------------------------------------------------------
+// Global materials (download links set in wp-admin)
+// --------------------------------------------------------------------
+
+.global-materials-panel {
+    margin-bottom: 30px;
+    background: $color-bg-info-light;
+    padding: $spacing-large;
+    border-left: 4px solid $color-info;
+    border-radius: $border-radius-base;
+
+    .global-materials-title {
+        margin: 0 0 $spacing-medium 0;
+        font-size: 16px;
+        color: $color-text-success-dark;
+    }
+
+    .global-materials-list {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .btn-material-download {
+        background: $color-text-light;
+        color: $color-info;
+        border: $border-width-base solid $color-info;
+        padding: 8px 14px;
+        border-radius: $border-radius-base;
+        text-decoration: none;
+        font-weight: bold;
+        font-size: $font-size-small;
+        display: inline-flex;
+        align-items: center;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+}
+
+// --------------------------------------------------------------------
+// Order form: carrier selection
+// --------------------------------------------------------------------
+
+.radio-options-group {
+    display: flex;
+    gap: $spacing-large;
+    margin-top: $spacing-small;
+
+    .radio-label {
+        font-weight: normal;
+    }
+}
+
+.carrier-box {
+    border: $border-width-base solid $color-border-light;
+    padding: $spacing-large;
+    border-radius: $border-radius-base + 1px;
+    background: $color-bg-light;
+    margin-top: $spacing-medium;
+}
+
+.carrier-actions-group {
+    display: flex;
+    flex-direction: column;
+    gap: $spacing-medium;
+    margin-top: $spacing-small;
+}
+
+.dpd-instruction {
+    font-size: 0.9em;
+    color: $color-text-secondary;
+    margin-bottom: $spacing-medium;
+}
+
+.btn-dpd {
+    display: inline-block;
+    background-color: $color-dpd;
+    color: $color-text-light;
+    padding: 8px 12px;
+    border-radius: $border-radius-base;
+    text-decoration: none;
+    font-weight: bold;
+    margin-bottom: $spacing-large;
+}
+
+.btn-save-info {
+    background-color: $color-info;
+    color: $color-text-light;
+    padding: 12px 20px;
+    border: none;
+    border-radius: $border-radius-base;
+    font-size: 1em;
+    cursor: pointer;
+    font-weight: bold;
+    margin-top: $spacing-medium;
+
+    &:hover {
+        background-color: $color-info-hover;
+    }
+}
+
+// --------------------------------------------------------------------
+// Order form: layout, inputs, custom radios, submit
+// --------------------------------------------------------------------
+
+.order-materials-form {
+    .uppercase-title {
+        font-size: 18px;
+        font-weight: 900;
+        text-transform: none; // Według zdjęcia pierwsza litera jest duża, reszta mała
+        margin-bottom: 25px;
+        color: #000;
+    }
+
+    // Nowe pola input z wyraźną obwódką
+    .form-input-bold {
+        &::placeholder {
+            color: #000;
+            font-weight: bold;
+            opacity: 1;
+        }
+
+        &:focus {
+            border-color: #000 !important;
+            box-shadow: inset 0 0 0 1px #000;
+        }
+    }
+
+    .custom-radio-list {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 10px;
+
+        &.horizontal {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+
+            .radio-text {
+                margin-top: 6px;
+            }
+        }
+    }
+
+    // Pojedynczy element radio
+    .custom-radio-item {
+        display: flex;
+        align-items: flex-start;
+        cursor: pointer;
+
+        input[type="radio"] {
+            position: absolute;
+            opacity: 0;
+            cursor: pointer;
+            height: 0;
+            width: 0;
+        }
+
+        .radio-custom-circle {
+            width: 26px;
+            height: 26px;
+            border: 2px solid #000;
+            border-radius: 50%;
+            margin-right: 12px;
+            position: relative;
+            flex-shrink: 0;
+            margin-top: 2px;
+            background-color: #fff;
+            transition: all 0.2s ease-in-out;
+        }
+
+        input[type="radio"]:checked + .radio-custom-circle::after {
+            content: '';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            width: 14px;
+            height: 14px;
+            background-color: #000;
+            border-radius: 50%;
+        }
+
+        .radio-text {
+            display: flex;
+            flex-direction: column;
+
+            .radio-main {
+                font-size: 16px;
+                font-weight: 900;
+                text-transform: uppercase;
+                line-height: 1;
+                color: #000;
+            }
+
+            .radio-sub {
+                font-size: 16px;
+                color: #000;
+                margin-top: 8px;
+                font-weight: normal;
+            }
+        }
+    }
+
+    .btn-yellow-block {
+        background-color: #ffff00;
+        color: #000;
+        border: none;
+        padding: 18px 40px;
+        font-size: 18px;
+        font-weight: 900;
+        text-transform: uppercase;
+        cursor: pointer;
+        display: inline-block;
+        margin-top: 20px;
+        border-radius: 0; // Brak zaokrągleń według zdjęcia
+        transition: background-color 0.2s ease;
+
+        &:hover {
+            background-color: $color-dark;
+        }
+    }
+}
+
+// --------------------------------------------------------------------
+// Digital materials ([digital_materials]): category frames with download buttons
+// --------------------------------------------------------------------
+
+.digital-materials-wrapper {
+
+    // Frame for each category
+    .digital-materials-category-frame {
+        border: 2px solid #000;
+        padding: 20px;
+        margin-bottom: 30px;
+        border-radius: 8px;
+
+        // Category heading
+        .digital-materials-category-title {
+            margin-top: 0;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+            margin-bottom: 20px;
+        }
+
+        // Grid layout for files
+        .digital-materials-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+            gap: 15px;
+
+            // Single download button
+            .btn-digital-download {
+                display: flex;
+                align-items: center;
+                justify-content: space-between;
+                background: #f9f9f9;
+                padding: 10px 15px;
+                border: 1px solid #ddd;
+                text-decoration: none;
+                color: #000;
+                border-radius: 4px;
+                transition: background-color 0.2s ease;
+
+                // Interactive state
+                &:hover {
+                    background-color: #eee;
+                }
+
+                // File name text
+                .download-text {
+                    font-weight: bold;
+                    font-size: 14px;
+                }
+
+                // Yellow arrow icon
+                .download-icon {
+                    background: #ffff00;
+                    padding: 5px 10px;
+                    border-radius: 50%;
+                    font-weight: bold;
+
+                    // Add downward arrow entity
+                    &::after {
+                        content: '\2193';
+                    }
+                }
+            }
+        }
+    }
+}

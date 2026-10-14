@@ -1,95 +1,101 @@
 # Plugin amnesty-petitions-mk
 
+Stan: 2026-10-14, `develop` @ `02ddaac`. Zmiany robocze: [status.md](status.md#zmiany-robocze-niezatwierdzone).
+
 ## Rola
 
-`amnesty-petitions-mk` obsługuje petycje Amnesty: wpisy petycji, formularz podpisu, zapis podpisów, ekran podziękowania, ustawienia administracyjne, mapę, widget Elementora i integrację Salesforce.
+Plugin „Amnesty Petitions” obsługuje petycje: wpisy, formularz podpisu, zapis podpisów, ekran podziękowania, ustawienia, listę i eksport podpisów, widgety Elementora i synchronizację z Salesforce.
 
-Punkt wejścia: [`amnesty-petitions.php`](../plugins/amnesty-petitions-mk/amnesty-petitions.php).
+Punkt wejścia: [`amnesty-petitions.php`](../plugins/amnesty-petitions-mk/amnesty-petitions.php). Stała `AMNESTY_PETITIONS_VERSION` = `2.0.8` (nagłówek pluginu podaje `2.0.0`).
 
 ## Moduły
 
-- `database.php` - tabela podpisów i instalacja struktury danych;
-- `cpt-meta.php` - meta pola petycji i zapis danych wpisu;
-- `settings.php` - strona `Ustawienia` pod menu CPT petycji;
-- `shortcodes.php` - shortcode `[amnesty_petition]` oraz render formularza i podziękowania;
-- `ajax-salesforce.php` - obsługa zapisu podpisu i wysyłka do Salesforce;
-- `admin-signatures.php` - lista podpisów i eksport administracyjny;
-- `elementor-widgets.php` - rejestracja widgetów Elementora;
-- `templates/template-tags.php` - HTML kart petycji;
-- `templates/single-amnesty_petition.php` - szablon pojedynczej petycji;
-- `assets/css/petitions-frontend.css` - style frontendowe;
-- `assets/js/amnesty-frontend.js` - frontendowa obsługa formularza i modali.
+| Plik | Odpowiedzialność |
+|---|---|
+| `includes/database.php` | tabela podpisów (`dbDelta` przy aktywacji), `flush_rewrite_rules` |
+| `includes/cpt-meta.php` | CPT `amnesty_petition`, metabox i zapis meta, kolumny listy |
+| `includes/settings.php` | strona „Ustawienia” |
+| `includes/shortcodes.php` | `[amnesty_petition]`, `[amnesty_petition_map]` |
+| `includes/ajax-salesforce.php` | zapis podpisu, Salesforce, log `amnesty-debug.log` |
+| `includes/ajax-map.php` | AJAX danych mapy — **nie jest ładowany** (`require_once` zakomentowany) |
+| `includes/admin-signatures.php` | strona „Podpisy” i eksport CSV |
+| `includes/elementor-widgets.php` | kategoria „Amnesty Petycje” i widgety |
+| `templates/template-tags.php` | `amnesty_get_petition_card_html()` — HTML karty petycji |
+| `templates/single-amnesty_petition.php` | szablon pojedynczej petycji |
+| `assets/css/petitions-frontend.css`, `assets/js/amnesty-frontend.js` | front formularza (ręczny CSS/JS, bez buildu) |
 
-## CPT i dane petycji
+## CPT i meta petycji
 
-Plugin używa CPT `amnesty_petition`. Pojedyncza petycja może mieć m.in. następujące meta pola:
+`amnesty_petition`: publiczny, archiwum, slug `petycja`, wsparcie `title`, `editor`, `thumbnail`, `excerpt`. Menu w adminie: „Petitions”.
 
-- `_amnesty_petition_country`;
-- `_amnesty_petition_target`;
-- `_amnesty_petition_extra_letters`;
-- `_amnesty_petition_appeal`;
-- `_amnesty_petition_solidarity_letter`;
-- `_amnesty_petition_short_description`;
-- `_amnesty_petition_video_link`;
-- `_amnesty_petition_materials`.
+Meta (zapisywane przez metabox w [`cpt-meta.php`](../plugins/amnesty-petitions-mk/includes/cpt-meta.php)):
 
-Licznik podpisów jest liczony jako liczba rekordów petycji w tabeli `{$wpdb->prefix}amnesty_signatures` plus `_amnesty_petition_extra_letters`.
+| Klucz | Znaczenie |
+|---|---|
+| `_amnesty_petition_topic_name` | nazwa Topic w Salesforce; pusta = brak synchronizacji |
+| `_amnesty_petition_country`, `_amnesty_petition_addressee` | kraj, adresat |
+| `_amnesty_petition_target` | cel liczby podpisów (karta) |
+| `_amnesty_petition_extra_letters` | liczba listów doliczana do licznika (np. papierowych) |
+| `_amnesty_petition_appeal`, `_amnesty_petition_solidarity_letter` | treści dwóch typów listu |
+| `_amnesty_petition_short_description`, `_amnesty_petition_top_content` | treści szablonu |
+| `_amnesty_petition_video_link`, `_amnesty_petition_materials` | wideo, materiały |
+| `_amnesty_petition_show_map` | pokazanie mapy sygnatariuszy |
+
+Licznik = `COUNT` rekordów petycji w tabeli + `_amnesty_petition_extra_letters`.
+
+## Tabela podpisów
+
+`{$wpdb->prefix}amnesty_signatures` ([`database.php`](../plugins/amnesty-petitions-mk/includes/database.php)):
+
+`id`, `petition_id`, `first_name`, `last_name`, `email`, `phone`, `city`, `letter_type` (domyślnie `appeal`), `custom_message`, `campaign_consent`, `newsletter_consent`, `signed_at`, `salesforce_synced`. Indeksy: `petition_id`, `email`.
+
+Tabela powstaje/aktualizuje się **tylko przy aktywacji pluginu**. Zmiana schematu wymaga ponownej aktywacji (lub innej migracji) na każdym środowisku.
 
 ## Renderowanie pojedynczej petycji
 
-Plugin wybiera szablon `single-amnesty_petition.php` przez filtr `single_template`. Szablon renderuje:
+Filtr `single_template` używa `single-amnesty_petition.php` z motywu, jeśli istnieje, w przeciwnym razie szablonu pluginu. Szablon renderuje hero (obraz, tytuł, kraj, opis, wideo), formularz `[amnesty_petition id]` i — gdy `_amnesty_petition_show_map` — `[amnesty_petition_map id]`.
 
-1. sekcję hero z obrazem, tytułem, krajem, opisem i opcjonalnym wideo;
-2. formularz `[amnesty_petition id="..."]`;
-3. opcjonalną mapę sygnatariuszy;
-4. pozostałe elementy zależne od meta pól.
-
-Formularz pozwala wybrać typ listu, edytować treść, podać dane sygnatariusza i udzielić zgód.
+`[amnesty_petition]` pozwala wybrać typ listu (apel / list solidarnościowy), edytować treść, podać dane i zgody. Opcjonalna zgoda „podpisz wszystkie” (`sign_all`).
 
 ## Zapis podpisu
 
-Frontend przechwytuje submit formularza i wysyła `FormData` do `admin-ajax.php`. Żądanie zawiera nonce `amnesty_sign_petition`. Po sukcesie interfejs przechodzi do `#thankyou`; po błędzie pokazuje komunikat w formularzu.
+[`ajax-salesforce.php`](../plugins/amnesty-petitions-mk/includes/ajax-salesforce.php), akcja `submit_amnesty_petition` (także dla niezalogowanych):
 
-Dane są zapisywane w tabeli podpisów, a dla skonfigurowanych przypadków przekazywane dalej do Salesforce. Szczegóły połączenia są zależne od opcji środowiska; wartości sekretów nie są częścią dokumentacji.
+1. weryfikacja nonce `amnesty_sign_petition` (pole `amnesty_sign_nonce`), wymaganych pól i `is_email`;
+2. `sign_all` = podpis pod wszystkimi opublikowanymi petycjami, w przeciwnym razie tylko pod bieżącą;
+3. dla każdej petycji: pominięcie, jeśli ten e-mail już ją podpisał; zapis rekordu;
+4. jeśli petycja ma `_amnesty_petition_topic_name`: token OAuth (`client_credentials`) → wyszukanie lub utworzenie `Topic` → wyszukanie po e-mailu lub utworzenie `Contact` → `TopicAssignment`; sukces ustawia `salesforce_synced = 1`;
+5. odpowiedź JSON; błąd, gdy e-mail już podpisał petycję główną (lub wszystkie wybrane).
 
-## Ustawienia administracyjne
+Do Salesforce trafiają imię, nazwisko, e-mail, telefon, miasto. Zgody i typ listu zostają tylko w tabeli. Token jest pobierany przy każdej synchronizacji. Nieudana synchronizacja nie jest ponawiana — rekord zostaje z `salesforce_synced = 0`.
 
-Plugin rejestruje stronę ustawień pod menu CPT petycji:
+W HEAD błędy są dopisywane do `amnesty-debug.log` w katalogu pluginu (zawiera m.in. adresy e-mail). Zmiana robocza przenosi log do `_wpeprivate/` — [deployment.md](deployment.md#log-pluginu).
 
-`Wydarzenia/petycje -> Ustawienia`
+## Mapa sygnatariuszy
 
-Ustawienia obejmują:
+`[amnesty_petition_map]` ładuje Leaflet z `unpkg.com` i pobiera dane z `admin-ajax.php?action=get_amnesty_map_data`. Handler tej akcji jest w `ajax-map.php`, który w HEAD nie jest ładowany, a widget mapy jest wyrejestrowany. **Otwarta kwestia:** włączenie `_amnesty_petition_show_map` prawdopodobnie da pustą mapę (nie zweryfikowano w przeglądarce).
 
-- kolory elementów;
-- teksty RODO i zgód;
-- tytuł i opis starszego popupu;
-- teksty ekranu podziękowania;
-- etykiety trzech przycisków podziękowania;
-- adresy przycisków wydarzeń, znaczka i dalszych działań;
-- link prywatności;
-- konfigurację Salesforce.
+## Administracja
 
-Wartości są rejestrowane przez WordPress Settings API i sanitizowane zależnie od typu pola.
+Pod menu „Petitions”:
+
+- **Ustawienia** ([`settings.php`](../plugins/amnesty-petitions-mk/includes/settings.php), `manage_options`): grupa `amnesty_global_settings_group` — kolory przycisków (kolory markera mapy są zarejestrowane, ale ich pola są zakomentowane), teksty RODO i zgód, popup, teksty i linki ekranu podziękowania, link prywatności, `amnesty_sf_instance_url`, `amnesty_sf_client_id`, `amnesty_sf_client_secret`. Opcja `amnesty_text_consent_sign_all` jest odczytywana, ale nie ma pola w ustawieniach — zawsze działa tekst domyślny z kodu.
+- **Podpisy** ([`admin-signatures.php`](../plugins/amnesty-petitions-mk/includes/admin-signatures.php), `manage_options`): lista podpisów i akcja masowa „Eksportuj do CSV” (separator `;`, UTF-8 z BOM).
+
+## Widgety Elementora
+
+Kategoria „Amnesty Petycje”, rejestrowana tylko gdy Elementor jest załadowany:
+
+- `Amnesty_Petition_Form_Widget` — formularz;
+- `Amnesty_Petition_Card_Widget` — karta petycji;
+- `Amnesty_Petition_Map_Widget` — klasa istnieje, rejestracja zakomentowana.
 
 ## Ekran podziękowania
 
-Stan `#thankyou` ukrywa formularz i pokazuje:
-
-- tytuł;
-- podtytuł;
-- aktualny licznik listów;
-- tekst zachęty;
-- trzy konfigurowalne przyciski.
-
-Style są responsywne. Na mobile formularz petycji przechodzi do jednej kolumny, zakładki typów listu są ułożone pionowo, a zgody mają wspólny układ checkboxa i tekstu.
+Stan `#thankyou` ukrywa formularz i pokazuje tytuł, podtytuł, licznik listów, nagłówek akcji i trzy przyciski (wydarzenia, znaczek, dalsze działania) — teksty i linki z opcji `amnesty_thankyou_*`.
 
 ## Zasoby
 
-Style są ładowane tylko na stronach pojedynczego CPT `amnesty_petition`. Wersja zasobu CSS i JavaScript jest ustalana na podstawie `filemtime`, jeśli plik istnieje. Skrypt frontendowy jest ładowany w stopce i otrzymuje przez `wp_localize_script` adres AJAX oraz nonce.
+CSS i JS pluginu są ładowane tylko na `is_singular('amnesty_petition')`, z wersją z `filemtime`. JS ładowany w stopce, dostaje `amnestyAjax` (`ajaxurl`, `nonce`, komunikaty błędów).
 
-## Ograniczenia
-
-- Brak automatycznych testów pluginu.
-- Integracja Salesforce wymaga zewnętrznego środowiska i konfiguracji.
-- Część HTML formularza zawiera istniejące inline style, dlatego zmiany CSS muszą uwzględniać kaskadę i reguły `!important`.
-- Tabela podpisów jest zależna od prefixu WordPressa i nie powinna być adresowana stałą nazwą.
+Formularz zawiera inline style, dlatego zmiany CSS muszą uwzględniać kaskadę i reguły `!important`.

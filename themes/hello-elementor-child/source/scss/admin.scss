@@ -1,3 +1,11 @@
+// wp-admin bundle -> dist/admin.min.css
+// Note: maraton_wp_enqueue_admin() in functions/enqueue-scripts.php is not hooked yet,
+// so this file is built but not loaded in wp-admin.
+
+@use "admin/reports";
+@use "admin/orders";
+@use "admin/settings";
+
 html {
   scroll-behavior: smooth;
 }

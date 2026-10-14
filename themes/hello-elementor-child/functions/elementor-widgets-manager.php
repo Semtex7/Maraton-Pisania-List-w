@@ -14,9 +14,7 @@ class Widgets_Manager {
     /* Main method to load and register widgets */
     public function register_custom_widgets( $widgets_manager ) {
         
-        require_once get_theme_file_path( 'functions/widgets/block-counter.php' );
-        
-        $widgets_manager->register( new \Block_Counter_Widget() );
+        // Block_Counter_Widget is registered by the amnesty-petitions-mk plugin.
     }
 }
 

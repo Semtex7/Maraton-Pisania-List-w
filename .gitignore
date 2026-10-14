@@ -26,3 +26,6 @@ themes/*
 # Keep installed dependencies out even inside allowed themes/plugins.
 **/node_modules/
 **/node_modules/**
+
+# Never commit plugin logs (they may contain personal data).
+**/amnesty-debug.log

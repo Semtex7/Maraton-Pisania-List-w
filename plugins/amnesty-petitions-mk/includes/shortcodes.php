@@ -14,54 +14,48 @@ function amnesty_petition_render_shortcode( $atts ) {
     global $post;
     
     $atts = shortcode_atts( array( 
-        'id' => isset( $post->ID ) ? $post->ID : 0 
-    ), $atts, 'amnesty_petition' );
+        'id' => isset( $post->ID ) ? $post->ID : 0      ),$atts, 'amnesty_petition' );
     
-    $petition_id = intval( $atts['id'] );
+    $petition_id = intval($atts['id'] );
     
-    if ( ! $petition_id || get_post_type( $petition_id ) !== 'amnesty_petition' ) {
+    if ( ! $petition_id || get_post_type($petition_id ) !== 'amnesty_petition' ) {
         return '<p>' . esc_html__( 'Błąd: Nie znaleziono petycji.', 'amnesty-petitions' ) . '</p>';
     }
 
     // Fetch options for visual settings and links dynamically from the admin panel
-    $rodo_intro       = get_option('amnesty_text_rodo_intro', 'Klikając "Wysyłam!", przekazujesz swój głos...' );
-    $rodo_full        = get_option('amnesty_text_rodo_full', 'Twoje dane będą przetwarzane...' );
-    $consent_camp     = get_option('amnesty_text_consent_campaign', 'Chcę otrzymywać informacje na temat innych akcji...' );
+    $rodo_intro       = get_option('amnesty_text_rodo_intro', esc_html__('Klikając "Wysyłam!", przekazujesz swój głos...', 'amnesty-petitions') );
+    $rodo_full        = get_option('amnesty_text_rodo_full', esc_html__('Twoje dane będą przetwarzane...', 'amnesty-petitions') );
+    $consent_camp     = get_option('amnesty_text_consent_campaign', esc_html__('Chcę otrzymywać informacje na temat innych akcji...', 'amnesty-petitions') );
     
     // Add dynamic option for signing all petitions (you can add this to settings.php later)
-    $consent_sign_all = get_option('amnesty_text_consent_sign_all', 'Chcę automatycznie podpisać akcje w sprawach wszystkich bohaterów tegorocznego Maratonu.' );
+    $consent_sign_all = get_option('amnesty_text_consent_sign_all', esc_html__('Chcę automatycznie podpisać akcje w sprawach wszystkich bohaterów tegorocznego Maratonu.', 'amnesty-petitions') );
     
     $link_privacy     = get_option('amnesty_link_privacy', '#' );
 
-    $thankyou_title          = get_option('amnesty_thankyou_title', 'List napisany!' );
-    $thankyou_subtitle       = get_option('amnesty_thankyou_subtitle', 'Wkrótce przekażemy go na odpowiedni adres.' );
-    $thankyou_count_intro    = get_option('amnesty_thankyou_count_intro', 'Dzięki Tobie mamy już' );
-    $thankyou_count_suffix   = get_option('amnesty_thankyou_count_suffix', 'listów w tej akcji!' );
-    $thankyou_actions_title  = get_option('amnesty_thankyou_actions_title', 'Sprawdź, co możesz jeszcze zrobić:' );
-    $thankyou_events_label   = get_option('amnesty_thankyou_button_events_label', 'ZNAJDŹ WYDARZENIE W TWOJEJ OKOLICY' );
-    $thankyou_donate_label   = get_option('amnesty_thankyou_button_donate_label', 'KUP ZNACZEK' );
-    $thankyou_more_label     = get_option('amnesty_thankyou_button_more_label', 'SPRAWDŹ, CO JESZCZE ROBIMY' );
+    $thankyou_title          = get_option('amnesty_thankyou_title', esc_html__('List napisany!', 'amnesty-petitions') );$thankyou_subtitle       = get_option('amnesty_thankyou_subtitle', esc_html__('Wkrótce przekażemy go na odpowiedni adres.', 'amnesty-petitions') );
+    $thankyou_count_intro    = get_option('amnesty_thankyou_count_intro', esc_html__('Dzięki Tobie mamy już', 'amnesty-petitions') );
+    $thankyou_count_suffix   = get_option('amnesty_thankyou_count_suffix', esc_html__('listów w tej akcji!', 'amnesty-petitions') );
+    $thankyou_actions_title  = get_option('amnesty_thankyou_actions_title', esc_html__('Sprawdź, co możesz jeszcze zrobić:', 'amnesty-petitions') );
+    $thankyou_events_label   = get_option('amnesty_thankyou_button_events_label', esc_html__('ZNAJDŹ WYDARZENIE W TWOJEJ OKOLICY', 'amnesty-petitions') );
+    $thankyou_donate_label   = get_option('amnesty_thankyou_button_donate_label', esc_html__('KUP ZNACZEK', 'amnesty-petitions') );$thankyou_more_label     = get_option('amnesty_thankyou_button_more_label', esc_html__('SPRAWDŹ, CO JESZCZE ROBIMY', 'amnesty-petitions') );
     $thankyou_events_link    = get_option('amnesty_thankyou_button_events_link', get_option('amnesty_link_campaign', '#') );
     $thankyou_donate_link    = get_option('amnesty_thankyou_button_donate_link', get_option('amnesty_link_donate', '#') );
     $thankyou_more_link      = get_option('amnesty_thankyou_button_more_link', '#' );
 
     global $wpdb;
-    $table_name = $wpdb->prefix . 'amnesty_signatures';
-    $db_count = (int) $wpdb->get_var( $wpdb->prepare( "SELECT COUNT(id) FROM $table_name WHERE petition_id = %d", $petition_id ) );
-    $extra_letters = (int) get_post_meta( $petition_id, '_amnesty_petition_extra_letters', true );
-    $total_letters = $db_count + $extra_letters;
+    $table_name = $wpdb->prefix . 'amnesty_signatures';$db_count = (int) $wpdb->get_var($wpdb->prepare( "SELECT COUNT(id) FROM $table_name WHERE petition_id = %d", $petition_id ) );$extra_letters = (int) get_post_meta( $petition_id, '_amnesty_petition_extra_letters', true );$total_letters = $db_count +$extra_letters;
 
     // Fetch petition specific letter contents
-    $appeal_text      = get_post_meta( $petition_id, '_amnesty_petition_appeal', true );
-    $solidarity_text  = get_post_meta( $petition_id, '_amnesty_petition_solidarity_letter', true );
+    $appeal_text      = get_post_meta($petition_id, '_amnesty_petition_appeal', true );
+    $solidarity_text  = get_post_meta($petition_id, '_amnesty_petition_solidarity_letter', true );
 
     ob_start();
     ?>
     <div class="amnesty-petition-wrapper">
         <!-- Tabs moved outside the main form background -->
         <div class="amnesty-letter-type-toggle">
-            <button type="button" class="amnesty-toggle-btn active" data-type="appeal">List do władz</button>
-            <button type="button" class="amnesty-toggle-btn" data-type="solidarity">List solidarnościowy</button>
+            <button type="button" class="amnesty-toggle-btn active" data-type="appeal"><?php esc_html_e( 'List do władz', 'amnesty-petitions' ); ?></button>
+            <button type="button" class="amnesty-toggle-btn" data-type="solidarity"><?php esc_html_e( 'List solidarnościowy', 'amnesty-petitions' ); ?></button>
         </div>
 
         <!-- Added method="POST" as a fallback security measure -->
@@ -74,46 +68,46 @@ function amnesty_petition_render_shortcode( $atts ) {
             <div class="amnesty-form-grid">
                 <!-- Left Column: Message -->
                 <div class="amnesty-col-left">
-                    <label class="amnesty-section-label">TREŚĆ</label>
+                    <label class="amnesty-section-label"><?php esc_html_e( 'TREŚĆ', 'amnesty-petitions' ); ?></label>
                     <textarea name="custom_message" id="amnesty-message-<?php echo esc_attr($petition_id); ?>"><?php echo esc_textarea($appeal_text); ?></textarea>
                 </div>
 
                 <!-- Right Column: User Data -->
                 <div class="amnesty-col-right">
-                    <label class="amnesty-section-label">TWOJE DANE</label>
-                    <input type="text" name="first_name" placeholder="Imię*" required>
-                    <input type="text" name="last_name" placeholder="Nazwisko*" required>
-                    <input type="email" name="email" placeholder="E-mail*" required>
-                    <input type="tel" name="phone" placeholder="Telefon">
-                    <input type="text" name="city" placeholder="Miejscowość">
+                    <label class="amnesty-section-label"><?php esc_html_e( 'TWOJE DANE', 'amnesty-petitions' ); ?></label>
+                    <input type="text" name="first_name" placeholder="<?php esc_html_e( 'Imię*', 'amnesty-petitions' ); ?>" required>
+                    <input type="text" name="last_name" placeholder="<?php esc_html_e( 'Nazwisko*', 'amnesty-petitions' ); ?>" required>
+                    <input type="email" name="email" placeholder="<?php esc_html_e( 'E-mail*', 'amnesty-petitions' ); ?>" required>
+                    <input type="tel" name="phone" placeholder="<?php esc_html_e( 'Telefon', 'amnesty-petitions' ); ?>">
+                    <input type="text" name="city" placeholder="<?php esc_html_e( 'Miejscowość', 'amnesty-petitions' ); ?>">
                     
-                    <div class="amnesty-petition-rodo" style="font-size: 0.85em; color: #555; margin-bottom: 15px;">
+                    <div class="amnesty-petition-rodo"">
                         <p><?php echo esc_html($rodo_intro); ?></p>
                         <!-- Mandatory RODO consent -->
-                        <label style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-                            <input type="checkbox" name="rodo_consent" value="1" required style="margin-top: 4px;">
-                            <span>*<?php echo esc_html($rodo_full); ?> <a href="<?php echo esc_url($link_privacy); ?>" target="_blank">Polityka Prywatności</a>.</span>
+                        <label class="amnesty-checkbox-label">
+                            <input type="checkbox" name="rodo_consent" value="1" required class="amnesty-checkbox-input">
+                            <span>*<?php echo esc_html($rodo_full); ?> <a href="<?php echo esc_url($link_privacy); ?>" target="_blank"><?php esc_html_e( 'Polityka Prywatności', 'amnesty-petitions' ); ?></a>.</span>
                         </label>
                     </div>
 
                     <!-- Optional consents -->
-                    <label class="amnesty-petition-checkbox-group" style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer; margin-bottom: 10px;">
-                        <input type="checkbox" name="campaign_consent" value="1" style="margin-top: 4px;">
+                    <label class="amnesty-petition-checkbox-group amnesty-checkbox-label">
+                        <input type="checkbox" name="campaign_consent" value="1" class="amnesty-checkbox-input">
                         <span><?php echo esc_html($consent_camp); ?></span>
                     </label>
 
-                    <div class="amnesty-sign-all-wrapper" style="margin: 15px 0;">
-                        <label style="display: flex; align-items: center; gap: 10px; cursor: pointer;">
+                    <div class="amnesty-sign-all-wrapper">
+                        <label class="amnesty-sign-all-label">
                             <!-- Checkbox input for backend logic -->
-                            <input type="checkbox" name="sign_all" value="1" />
-                            <span><?php echo esc_html($consent_sign_all); ?></span>
+                            <input type="checkbox" checked name="sign_all" value="1" />
+                            <span><?php echo esc_html($consent_sign_all); ?> (<a href="<?php echo esc_url( amnesty_get_all_petitions_url() ); ?>" target="_blank"><?php esc_html_e( 'zobacz wszystkie', 'amnesty-petitions' ); ?></a>)</span>
                         </label>
                     </div>
                     
-                    <button type="submit" class="amnesty-petition-submit-btn" style="width: 100%; font-weight: bold;">WYSYŁAM!</button>
+                    <button type="submit" class="amnesty-petition-submit-btn amnesty-submit-btn"><?php esc_html_e( 'WYSYŁAM!', 'amnesty-petitions' ); ?></button>
                 </div>
             </div>
-            <div class="amnesty-form-messages" style="display:none; margin-top:15px; padding: 10px; border-radius: 4px;"></div>
+            <div class="amnesty-form-messages amnesty-msg-container"></div>
         </form>
     </div>
 
@@ -191,7 +185,7 @@ function amnesty_petition_render_shortcode( $atts ) {
             
             // Visual feedback
             submitBtn.disabled = true;
-            submitBtn.textContent = 'Wysyłanie...';
+            submitBtn.textContent = '<?php esc_html_e("Wysyłanie...", "amnesty-petitions") ?>';
             msgDiv.style.display = 'none';
             
             // Gather all form fields securely
@@ -218,24 +212,22 @@ function amnesty_petition_render_shortcode( $atts ) {
                 } else {
                     // Server returned an error (e.g. duplicate email)
                     msgDiv.style.display = 'block'; 
-                    msgDiv.style.backgroundColor = '#f8d7da';
-                    msgDiv.style.color = '#842029';
+                    msgDiv.classList.add('error-msg');
                     msgDiv.innerText = res.data; 
                     
                     submitBtn.disabled = false;
-                    submitBtn.textContent = 'WYSYŁAM!';
+                    submitBtn.textContent = '<?php esc_html_e("WYSYŁAM!", "amnesty-petitions") ?>';
                 }
             })
             .catch(err => { 
                 // Network or catastrophic failure
                 console.error('AJAX Error:', err);
                 msgDiv.style.display = 'block'; 
-                msgDiv.style.backgroundColor = '#f8d7da';
-                msgDiv.style.color = '#842029';
-                msgDiv.innerText = 'Błąd serwera. Sprawdź połączenie i spróbuj ponownie.'; 
+                msgDiv.classList.add('error-msg');
+                msgDiv.innerText = '<?php esc_html_e("Błąd serwera. Sprawdź połączenie i spróbuj ponownie.", "amnesty-petitions") ?>'; 
                 
                 submitBtn.disabled = false; 
-                submitBtn.textContent = 'WYSYŁAM!';
+                submitBtn.textContent = '<?php esc_html_e("WYSYŁAM!", "amnesty-petitions") ?>';
             });
         });
     });
@@ -244,8 +236,56 @@ function amnesty_petition_render_shortcode( $atts ) {
     return ob_get_clean();
 }
 
+add_shortcode('letters_counter', 'maraton_render_letters_counter_shortcode');
+
+function maraton_render_letters_counter_shortcode() {
+    // Letters from petitions published within the edition range (see includes/edition.php)
+    $total_signatures = amnesty_count_edition_letters();
+
+    $total_str = (string)$total_signatures;
+    $digits_count = strlen($total_str);
+
+    ob_start();
+    ?>
+    <div class="maraton-counter-container">
+        <h3 class="counter-heading"><?php esc_html_e('Napisaliśmy już listów w tym roku:', 'amnesty-petitions'); ?></h3>
+        
+        <div class="custom-block-counter-wrapper" data-target="<?php echo esc_attr($total_signatures); ?>" data-duration="2500">
+            <?php 
+            for ( $i = 0; $i < $digits_count; $i++ ) {
+                echo '<span class="counter-digit">0</span>';
+            }
+            ?>
+        </div>
+    </div>
+    <?php
+    
+    return ob_get_clean();
+}
+
+add_filter( 'body_class', 'amnesty_remove_elementor_kit_class', 999 );
+
+function amnesty_remove_elementor_kit_class( $classes ) {
+    
+    // Check if we are currently viewing a single petition page
+    if ( is_singular( 'amnesty_petition' ) ) {
+        
+        // Loop through all classes assigned to the body tag
+        foreach ( $classes as $key => $class ) {
+            
+            // If the class name starts with 'elementor-kit-', remove it from the array
+            if ( strpos( $class, 'elementor-kit-' ) === 0 ) {
+                unset( $classes[ $key ] );
+            }
+        }
+    }
+    
+    // Return the modified array of classes
+    return $classes;
+}
+
 /* 
- * 2. FRONTEND MAP RENDER (SHORTCODE)
+ * FRONTEND MAP RENDER (SHORTCODE)
 
 add_shortcode( 'amnesty_petition_map', 'amnesty_petition_map_render' );
 
@@ -253,10 +293,9 @@ function amnesty_petition_map_render( $atts ) {
     global $post;
     
     $atts = shortcode_atts( array( 
-        'id' => isset( $post->ID ) ? $post->ID : 0 
-    ), $atts, 'amnesty_petition_map' );
+        'id' => isset( $post->ID ) ? $post->ID : 0      ),$atts, 'amnesty_petition_map' );
     
-    $petition_id = intval( $atts['id'] );
+    $petition_id = intval($atts['id'] );
     
     if ( ! $petition_id ) {
         return '';
@@ -289,7 +328,7 @@ function amnesty_petition_map_render( $atts ) {
     </style>
     
     <div class="amnesty-map-wrapper">
-        <input type="text" id="amnesty-map-search-<?php echo esc_attr($petition_id); ?>" class="amnesty-map-search" placeholder="Szukaj miejscowości..." />
+        <input type="text" id="amnesty-map-search-<?php echo esc_attr($petition_id); ?>" class="amnesty-map-search" placeholder="<?php esc_attr_e('Szukaj miejscowości...', 'amnesty-petitions'); ?>" />
         
         <!-- Kontener mapy -->
         <div id="amnesty-map-<?php echo esc_attr($petition_id); ?>" class="amnesty-map-container"></div>

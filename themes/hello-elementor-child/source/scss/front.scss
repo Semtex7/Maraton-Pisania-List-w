@@ -1,19 +1,35 @@
-@use "variables"as *;
-@use "includes/index"as *;
-@use "components/index"as *;
-// @use "components/language-select";
+// Frontend bundle -> dist/front.min.css
+//
+// Folders:
+//   includes/   reset + mixins (and variables via forward)
+//   base/       page-level rules and global typography
+//   layout/     site header and footer
+//   components/ reusable UI: buttons, forms, alerts
+//   events/     events module (functions/events-*.php): panel, materials, map
+//   widgets/    Elementor widgets
+//   admin/      wp-admin screens — compiled into admin.scss, not here
+//
+// Import order is the cascade order; keep base/globals last (it overrides the reset).
 
-:root {
-  --post_feat_image_span: 230px;
-  --post_feat_image_span_mobile: 190px;
-}
+@use "variables" as *;
+@use "includes/index" as *;
 
-html,
-body {
-  font-size: $font_size;
-  line-height: 1rem;
+@use "base/page";
 
-  p {
-    font-family: 'Figtree', sans-serif;
-  }
-}
+@use "layout/header";
+@use "layout/footer";
+
+@use "events/edit-form";
+@use "events/events-table";
+@use "components/alerts";
+@use "events/materials";
+@use "events/map";
+@use "events/list";
+
+@use "components/buttons";
+@use "components/forms";
+
+@use "widgets/counter-block";
+@use "widgets/petition-card";
+
+@use "base/globals";

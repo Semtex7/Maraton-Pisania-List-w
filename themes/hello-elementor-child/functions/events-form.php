@@ -3,7 +3,7 @@
 global $event_form_error;
 $event_form_error = '';
 
-// 1. HANDLE EVENT SUBMISSION (Fires before page load to prevent F5 resubmission)
+// 1. HANDLE EVENT SUBMISSION
 
 add_action('template_redirect', 'handle_event_submission');
 
@@ -13,9 +13,9 @@ function handle_event_submission() {
     // Check if the form was submitted
     if ( $_SERVER['REQUEST_METHOD'] === 'POST' && isset($_POST['submit_event']) ) {
         
-        // Security check (nonce validation)
+        // Security check
         if ( ! isset($_POST['event_nonce']) || ! wp_verify_nonce($_POST['event_nonce'], 'save_event_action') ) {
-            $event_form_error = __('Błąd bezpieczeństwa formularza. Odśwież stronę i spróbuj ponownie.', 'amnestympl');
+            $event_form_error = esc_html__('Błąd bezpieczeństwa formularza. Odśwież stronę i spróbuj ponownie.', 'amnestympl');
             return;
         }
 
@@ -25,17 +25,17 @@ function handle_event_submission() {
         $street     = sanitize_text_field($_POST['street']);
         $city       = sanitize_text_field($_POST['city']);
 
+        // Validate required fields
         if ( empty($title) || empty($start_date) || empty($street) || empty($city) ) {
-            $event_form_error = __('Proszę wypełnić wszystkie wymagane pola (w tym ulicę i miejscowość).', 'amnestympl');
+            $event_form_error = esc_html__('Proszę wypełnić wszystkie wymagane pola (w tym ulicę i miejscowość).', 'amnestympl');
             return;
         }
 
         // --- SMART MAP VALIDATION (Geocoding) ---
         $addresses_to_check = array();
         
-        // Remove common street prefixes (ul., ulica, al., plac) for better API matching
+        // Remove common street prefixes for better API matching
         $clean_street = trim(preg_replace('/^(ul\.?\s*|ulica\s+|al\.?\s*|aleja\s+|pl\.?\s*|plac\s+)/i', '', $street));
-        
         $addresses_to_check[] = $clean_street . ', ' . $city;
         
         // Try without apartment numbers
@@ -75,35 +75,42 @@ function handle_event_submission() {
         }
 
         if ( ! $address_found ) {
-            $event_form_error = __('System map nie mógł zlokalizować podanej miejscowości. Sprawdź, czy nie ma literówek.', 'amnestympl');
-            return; // Stop saving, show error on the page
+            $event_form_error = esc_html__('System map nie mógł zlokalizować podanej miejscowości. Sprawdź, czy nie ma literówek.', 'amnestympl');
+            return; 
         }
         
         // --- SAVE TO DATABASE ---
         $post_id = wp_insert_post(array(
             'post_title'    => $title,
-            'post_type'     => 'wydarzenie', // Keep Polish DB key
+            'post_type'     => 'wydarzenie', 
             'post_status'   => 'publish'
         ));
 
         if ( $post_id ) {
-            // Array of meta fields (Keys remain Polish for DB compatibility, values are variables)
+            $start_time = sanitize_text_field($_POST['start_time']);
+            $end_date   = sanitize_text_field($_POST['end_date']);
+            $end_time   = sanitize_text_field($_POST['end_time']);
+
+            // Prepare meta fields array (dates also in the combined format used by the panel)
             $fields_to_save = array(
                 'data_rozpoczecia'     => $start_date,
-                'godzina_rozpoczecia'  => sanitize_text_field($_POST['start_time']),
-                'data_zakonczenia'     => sanitize_text_field($_POST['end_date']),
-                'godzina_zakonczenia'  => sanitize_text_field($_POST['end_time']),
+                'godzina_rozpoczecia'  => $start_time,
+                'data_zakonczenia'     => $end_date,
+                'godzina_zakonczenia'  => $end_time,
+                'data_czas_rozpoczecia' => date('Y-m-d H:i:s', strtotime(trim($start_date . ' ' . $start_time))),
+                'data_czas_zakonczenia' => ! empty($end_date) ? date('Y-m-d H:i:s', strtotime(trim($end_date . ' ' . $end_time))) : '',
                 'nazwa_lokalu'         => sanitize_text_field($_POST['venue_name']),
                 'ulica'                => $street,
                 'miejscowosc'          => $city,
                 'kod_pocztowy'         => sanitize_text_field($_POST['zip_code']),
                 'wydarzenie_publiczne' => isset($_POST['is_public_event']) ? 1 : 0,
+                'widoczne_na_mapie'    => isset($_POST['show_on_map']) ? 1 : 0,
                 'dostepnosc'           => isset($_POST['accessibility']) ? 1 : 0,
                 'geo_lat'              => $lat,
                 'geo_lng'              => $lng
             );
 
-            // Save via ACF if active, otherwise standard post meta
+            // Save meta fields
             foreach ($fields_to_save as $meta_key => $meta_value) {
                 if ( function_exists('update_field') ) {
                     update_field($meta_key, $meta_value, $post_id);
@@ -112,10 +119,17 @@ function handle_event_submission() {
                 }
             }
 
-            // --- HARD PHP REDIRECT (Prevents F5 duplication) ---
+            // Redirect back to the same tab
             $return_url = wp_get_referer() ? wp_get_referer() : get_permalink();
-            wp_safe_redirect(add_query_arg('added', '1', $return_url));
-            exit; // Stops script execution
+            
+            // Clean URL from existing hashes before appending new ones
+            $clean_url = explode('#', $return_url)[0];
+            
+            // Append the query arg and the hash for the "Add Event" tab
+            $redirect_url = add_query_arg('added', '1', $clean_url) . '#zakladka-dodaj-wydarzenie';
+            
+            wp_safe_redirect($redirect_url);
+            exit; 
         }
     }
 }
@@ -127,23 +141,24 @@ add_shortcode('event_form', 'render_event_form');
 function render_event_form() {
     global $event_form_error;
 
+    // Check user authentication
     if ( ! is_user_logged_in() ) {
         return '<div class="alert-message alert-warning">' . esc_html__('Musisz być zalogowany, aby zarejestrować wydarzenie.', 'amnestympl') . '</div>';
     }
 
     ob_start();
 
-    // Show success message after redirect
+    // Display success message
     if ( isset($_GET['added']) && $_GET['added'] == '1' ) {
-        echo '<div class="alert-message alert-success">🎉 ' . esc_html__('Dziękujemy! Twoje wydarzenie zostało pomyślnie dodane i opublikowane na mapie.', 'amnestympl') . '</div>';
+        echo '<div class="alert-message alert-success">🎉 ' . esc_html__('Dziękujemy! Twoje wydarzenie zostało pomyślnie dodane.', 'amnestympl') . '</div>';
     }
 
-    // Show validation errors
+    // Display validation errors
     if ( ! empty($event_form_error) ) {
         echo '<div class="alert-message alert-danger"><strong>' . esc_html__('Błąd walidacji:', 'amnestympl') . '</strong> ' . esc_html($event_form_error) . '</div>';
     }
 
-    // Remember field values if an error occurred
+    // Retain input values on error
     $val_org    = isset($_POST['organizer_name']) ? esc_attr($_POST['organizer_name']) : '';
     $val_street = isset($_POST['street']) ? esc_attr($_POST['street']) : '';
     $val_city   = isset($_POST['city']) ? esc_attr($_POST['city']) : '';
@@ -184,9 +199,17 @@ function render_event_form() {
         
         <div class="form-section checkbox-option">
             <label>
-                <input type="checkbox" name="is_public_event" value="1">
-                <strong><?php esc_html_e('Wydarzenie publiczne (otwarte dla osób z zewnątrz)', 'amnestympl'); ?></strong>
-                <span class="field-description"><?php esc_html_e('Zaznacz, aby wydarzenie pojawiło się na mapie.', 'amnestympl'); ?></span>
+                <!-- Removed 'checked' attribute and added dot in translation string -->
+                <input type="checkbox" name="is_public_event">
+                <strong><?php esc_html_e('Wydarzenie publiczne (otwarte dla osób z zewnątrz).', 'amnestympl'); ?></strong>
+            </label>
+        </div>
+
+        <div class="form-section checkbox-option">
+            <label>
+                <!-- Removed 'checked' attribute -->
+                <input type="checkbox" name="show_on_map">
+                <strong><?php esc_html_e('Zaznacz, by wydarzenie było widoczne na mapie.', 'amnestympl'); ?></strong>
             </label>
         </div>
 
@@ -197,7 +220,7 @@ function render_event_form() {
         
         <div class="form-section">
             <label class="form-label"><?php esc_html_e('Ulica i nr lokalu:', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
-            <input type="text" name="street" class="form-input" placeholder="<?php esc_attr_e('np. ul. Zofii Nałkowskiej 21', 'amnestympl'); ?>" value="<?php echo $val_street; ?>" required>
+            <input type="text" name="street" class="form-input" placeholder="<?php esc_attr_e('np. ul. Poznańska 10', 'amnestympl'); ?>" value="<?php echo $val_street; ?>" required>
             <span class="field-description field-description-inline"><?php esc_html_e('Staraj się podawać samą ulicę i numer budynku.', 'amnestympl'); ?></span>
         </div>
         

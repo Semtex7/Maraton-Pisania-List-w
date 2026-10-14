@@ -1,0 +1,38 @@
+@use "../includes/index" as *;
+
+// Events map ([events_map], Leaflet): tiles, custom markers, "Sprawdź wszystkie" link
+
+.events-map-all {
+    display: flex;
+    justify-content: center;
+    margin-top: 24px;
+}
+
+#events-map-canvas {
+    .leaflet-tile-pane {
+        filter: grayscale(80%) contrast(1.1);
+    }
+}
+.amnesty-custom-marker {
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    border: 3px solid #000;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.4);
+    background-color: #fff;
+    transition: transform 0.2s ease-in-out;
+
+    &:hover {
+        transform: scale(1.1);
+    }
+
+    // Green for public events
+    &.marker-public {
+        background-color: #84cc16;
+    }
+
+    // Red for private events
+    &.marker-private {
+        background-color: #dc0032;
+    }
+}

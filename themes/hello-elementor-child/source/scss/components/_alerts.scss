@@ -1,0 +1,50 @@
+@use "../includes/index" as *;
+
+// Status badges, empty states and alert boxes used by frontend forms and the panel
+
+.status-badge {
+    &.success {
+        color: $color-success;
+        font-weight: bold;
+        font-size: $font-size-small;
+        background: $color-bg-success-light;
+        padding: 4px 8px;
+        border-radius: $border-radius-base;
+        margin-left: 8px;
+    }
+}
+
+.empty-state-message {
+    padding: $spacing-large;
+    background-color: $color-bg-empty-state;
+    border-left: 4px solid $color-highlight;
+    margin-top: $spacing-xlarge;
+}
+
+.alert-message {
+    padding: $spacing-large;
+    border-radius: $border-radius-base + 1px; // 5px
+    margin-bottom: $spacing-xlarge;
+    border: $border-width-base solid transparent;
+
+    &.alert-default {
+        background: $color-bg-alert-default;
+    }
+
+    &.alert-warning {
+        background: $color-bg-warning-light;
+        color: $color-text-warning-dark;
+    }
+
+    &.alert-success {
+        color: $color-text-success-dark;
+        background-color: $color-bg-success-light;
+        border-color: $color-border-success;
+    }
+
+    &.alert-danger {
+        color: $color-text-danger-dark;
+        background-color: $color-bg-danger-light;
+        border-color: $color-border-danger;
+    }
+}

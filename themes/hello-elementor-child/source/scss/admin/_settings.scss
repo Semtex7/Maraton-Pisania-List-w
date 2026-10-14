@@ -1,0 +1,44 @@
+@use "../variables" as *;
+
+// Settings pages: "Materiały do pobrania" (functions/events-materials.php)
+// and "Ustawienia API" (functions/events-shipping-api.php)
+
+.admin-materials-table {
+    .material-row-th {
+        padding-top: $spacing-xlarge;
+    }
+
+    .material-row-td {
+        padding-top: $spacing-xlarge;
+    }
+
+    .material-field-label {
+        display: block;
+        margin-bottom: $spacing-small;
+    }
+
+    .material-input-group {
+        display: flex;
+        gap: $spacing-medium;
+        align-items: center;
+    }
+
+    .btn-remove-media {
+        color: $color-danger;
+    }
+}
+
+.shipping-api-settings {
+    .settings-section-title {
+        margin-top: $spacing-xxlarge;
+        border-bottom: $border-width-base solid $color-border-default;
+        padding-bottom: $spacing-medium;
+    }
+
+    .settings-description {
+        font-size: $font-size-small;
+        color: $color-text-secondary;
+        margin-top: $spacing-small;
+        display: block;
+    }
+}

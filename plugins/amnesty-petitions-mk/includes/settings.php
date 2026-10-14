@@ -32,7 +32,8 @@ function amnesty_register_global_settings() {
         'amnesty_text_rodo_intro'         => 'textarea',
         'amnesty_text_rodo_full'          => 'textarea', 
         'amnesty_text_consent_campaign'   => 'textarea',
-        'amnesty_text_consent_newsletter' => 'textarea', 
+        'amnesty_text_consent_newsletter' => 'textarea',
+        'amnesty_text_consent_sign_all'   => 'textarea',
         'amnesty_text_popup_title'        => 'text',
         'amnesty_text_popup_desc'         => 'textarea',
         'amnesty_thankyou_title'          => 'text',
@@ -48,6 +49,7 @@ function amnesty_register_global_settings() {
         'amnesty_link_privacy'            => 'url',
         'amnesty_link_donate'             => 'url',
         'amnesty_link_campaign'           => 'url',
+        'amnesty_link_all_petitions'      => 'url',
         'amnesty_thankyou_button_events_link' => 'url',
         'amnesty_thankyou_button_donate_link' => 'url',
         'amnesty_thankyou_button_more_link' => 'url',
@@ -55,13 +57,19 @@ function amnesty_register_global_settings() {
         
         // API Keys (Standard text strings)
         'amnesty_sf_client_id'            => 'text',
-        'amnesty_sf_client_secret'        => 'text'
+        'amnesty_sf_client_secret'        => 'text',
+
+        // Edition date range (Y-m-d)
+        'amnesty_edition_start'           => 'date',
+        'amnesty_edition_end'             => 'date'
     ];
 
     foreach ($settings as $setting_name => $type) {
         $sanitize_callback = '';
-        
-        if ( $type === 'color' ) {
+
+        if ( $type === 'date' ) {
+            $sanitize_callback = 'amnesty_sanitize_date';
+        } elseif ( $type === 'color' ) {
             $sanitize_callback = 'sanitize_hex_color';
         } elseif ( $type === 'url' ) {
             $sanitize_callback = 'esc_url_raw';
@@ -75,6 +83,12 @@ function amnesty_register_global_settings() {
             'sanitize_callback' => $sanitize_callback
         ]);
     }
+}
+
+// Accept only Y-m-d dates (value of <input type="date">); anything else is cleared
+function amnesty_sanitize_date( $value ) {
+    $value = sanitize_text_field( (string) $value );
+    return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ? $value : '';
 }
 
 // Helper function to render table rows
@@ -95,6 +109,7 @@ function amnesty_render_global_settings_page() {
             <a href="#content" class="nav-tab" data-tab="content"><?php esc_html_e( 'Treści', 'amnesty-petitions' ); ?></a>
             <a href="#links" class="nav-tab" data-tab="links"><?php esc_html_e( 'Linki', 'amnesty-petitions' ); ?></a>
             <a href="#api" class="nav-tab" data-tab="api"><?php esc_html_e( 'Salesforce API', 'amnesty-petitions' ); ?></a>
+            <a href="#edition" class="nav-tab" data-tab="edition"><?php esc_html_e( 'Edycja', 'amnesty-petitions' ); ?></a>
         </h2>
 
         <form method="post" action="options.php">
@@ -118,6 +133,7 @@ function amnesty_render_global_settings_page() {
                 amnesty_field_row(__( 'Pełne RODO', 'amnesty-petitions' ), '<textarea name="amnesty_text_rodo_full" style="width:100%">'.esc_textarea(get_option('amnesty_text_rodo_full', 'Twoje dane będą przetwarzane...')).'</textarea>');
                 amnesty_field_row(__( 'Zgoda Kampanijna', 'amnesty-petitions' ), '<textarea name="amnesty_text_consent_campaign" style="width:100%">'.esc_textarea(get_option('amnesty_text_consent_campaign', 'Chcę otrzymywać informacje...')).'</textarea>');
                 amnesty_field_row(__( 'Zgoda Newsletter', 'amnesty-petitions' ), '<textarea name="amnesty_text_consent_newsletter" style="width:100%">'.esc_textarea(get_option('amnesty_text_consent_newsletter', 'Chcę otrzymywać informacje...')).'</textarea>');
+                amnesty_field_row(__( 'Zgoda „Podpisz wszystkie”', 'amnesty-petitions' ), '<textarea name="amnesty_text_consent_sign_all" style="width:100%">'.esc_textarea(get_option('amnesty_text_consent_sign_all', 'Chcę automatycznie podpisać akcje w sprawach wszystkich bohaterów tegorocznego Maratonu.')).'</textarea><p class="description">'.esc_html__( 'Link „zobacz wszystkie” jest dodawany automatycznie (adres w zakładce Linki).', 'amnesty-petitions' ).'</p>');
                 amnesty_field_row(__( 'Tytuł Pop-up', 'amnesty-petitions' ), '<input type="text" name="amnesty_text_popup_title" value="'.esc_attr(get_option('amnesty_text_popup_title', 'Dziękujemy!')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Opis Pop-up', 'amnesty-petitions' ), '<textarea name="amnesty_text_popup_desc" style="width:100%">'.esc_textarea(get_option('amnesty_text_popup_desc', 'Wesprzyj nas:')).'</textarea>');
                 amnesty_field_row(__( 'Podziękowanie: tytuł', 'amnesty-petitions' ), '<input type="text" name="amnesty_thankyou_title" value="'.esc_attr(get_option('amnesty_thankyou_title', 'List napisany!')).'" style="width:100%" />');
@@ -134,12 +150,13 @@ function amnesty_render_global_settings_page() {
             <!-- Tab: Links -->
             <table class="form-table amnesty-tab-content" id="tab-links" style="display: none;">
             <?php
-                amnesty_field_row(__( 'Link Prywatności', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_privacy" value="'.esc_attr(get_option('amnesty_link_privacy', '#')).'" style="width:100%" />');
-                amnesty_field_row(__( 'Link Darowizny', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_donate" value="'.esc_attr(get_option('amnesty_link_donate', '#')).'" style="width:100%" />');
-                amnesty_field_row(__( 'Link Kampanii', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_campaign" value="'.esc_attr(get_option('amnesty_link_campaign', '#')).'" style="width:100%" />');
-                amnesty_field_row(__( 'Podziękowanie: link wydarzeń', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_events_link" value="'.esc_attr(get_option('amnesty_thankyou_button_events_link', get_option('amnesty_link_campaign', '#'))).'" style="width:100%" />');
-                amnesty_field_row(__( 'Podziękowanie: link kupna znaczka', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_donate_link" value="'.esc_attr(get_option('amnesty_thankyou_button_donate_link', get_option('amnesty_link_donate', '#'))).'" style="width:100%" />');
-                amnesty_field_row(__( 'Podziękowanie: link więcej działań', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_more_link" value="'.esc_attr(get_option('amnesty_thankyou_button_more_link', '#')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Link Prywatności', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_privacy" value="'.esc_attr(get_option('amnesty_link_privacy', '')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Link Darowizny', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_donate" value="'.esc_attr(get_option('amnesty_link_donate', '')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Link „zobacz wszystkie” (lista akcji)', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_all_petitions" value="'.esc_attr(get_option('amnesty_link_all_petitions', '')).'" style="width:100%" placeholder="'.esc_attr(get_post_type_archive_link('amnesty_petition')).'" /><p class="description">'.esc_html__( 'Puste = lista akcji bieżącej edycji (archiwum petycji).', 'amnesty-petitions' ).'</p>');
+                amnesty_field_row(__( 'Link Kampanii', 'amnesty-petitions' ), '<input type="url" name="amnesty_link_campaign" value="'.esc_attr(get_option('amnesty_link_campaign', '')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link wydarzeń', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_events_link" value="'.esc_attr(get_option('amnesty_thankyou_button_events_link', get_option('amnesty_link_campaign', ''))).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link kupna znaczka', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_donate_link" value="'.esc_attr(get_option('amnesty_thankyou_button_donate_link', get_option('amnesty_link_donate', ''))).'" style="width:100%" />');
+                amnesty_field_row(__( 'Podziękowanie: link więcej działań', 'amnesty-petitions' ), '<input type="url" name="amnesty_thankyou_button_more_link" value="'.esc_attr(get_option('amnesty_thankyou_button_more_link', '')).'" style="width:100%" />');
             ?>
             </table>
 
@@ -149,6 +166,15 @@ function amnesty_render_global_settings_page() {
                 amnesty_field_row(__( 'Instance URL', 'amnesty-petitions' ), '<input type="url" name="amnesty_sf_instance_url" value="'.esc_attr(get_option('amnesty_sf_instance_url', '')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Client ID', 'amnesty-petitions' ), '<input type="text" name="amnesty_sf_client_id" value="'.esc_attr(get_option('amnesty_sf_client_id', '')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Client Secret', 'amnesty-petitions' ), '<input type="password" name="amnesty_sf_client_secret" value="'.esc_attr(get_option('amnesty_sf_client_secret', '')).'" style="width:100%" />');
+            ?>
+            </table>
+
+            <!-- Tab: Edition -->
+            <table class="form-table amnesty-tab-content" id="tab-edition" style="display: none;">
+            <?php
+                amnesty_field_row(__( 'Początek edycji', 'amnesty-petitions' ), '<input type="date" name="amnesty_edition_start" value="'.esc_attr(get_option('amnesty_edition_start', '')).'" />');
+                amnesty_field_row(__( 'Koniec edycji', 'amnesty-petitions' ), '<input type="date" name="amnesty_edition_end" value="'.esc_attr(get_option('amnesty_edition_end', '')).'" />'
+                    . '<p class="description">' . esc_html__( 'Zakres (włącznie) decyduje, które wydarzenia liczy licznik wydarzeń (data utworzenia), a które petycje są „tegoroczne” (data publikacji) dla licznika listów i opcji „Podpisz wszystkie”. Bez ustawionych dat używany jest bieżący rok kalendarzowy.', 'amnesty-petitions' ) . '</p>');
             ?>
             </table>
 
@@ -176,6 +202,19 @@ function amnesty_render_global_settings_page() {
                         
                         // Save active tab in URL hash
                         window.location.hash = this.getAttribute('data-tab');
+                    });
+                });
+
+                // Browsers block submit silently when an invalid field sits in a hidden tab:
+                // switch to that tab so the validation message is visible
+                document.querySelectorAll('.amnesty-tab-content input, .amnesty-tab-content textarea').forEach(field => {
+                    field.addEventListener('invalid', function() {
+                        const table = this.closest('.amnesty-tab-content');
+                        const tab = document.querySelector('.nav-tab[data-tab="' + table.id.replace('tab-', '') + '"]');
+                        if (tab && table.style.display === 'none') {
+                            tab.click();
+                            setTimeout(() => this.reportValidity(), 0);
+                        }
                     });
                 });
 

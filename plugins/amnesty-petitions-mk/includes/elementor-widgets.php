@@ -50,10 +50,11 @@ final class Amnesty_Elementor_Extension {
     public function register_widgets( $widgets_manager ) {
         // Require the widget classes only when Elementor is active and registering widgets
         require_once AMNESTY_PETITIONS_PATH . 'includes/widgets/class-petition-form-widget.php';
-        // require_once AMNESTY_PETITIONS_PATH . 'includes/widgets/class-petition-map-widget.php';
+        require_once AMNESTY_PETITIONS_PATH . 'includes/widgets/class-petition-block-counter.php';
         require_once AMNESTY_PETITIONS_PATH . 'includes/widgets/class-petition-card-widget.php';
 
         $widgets_manager->register( new \Amnesty_Petition_Form_Widget() );
+        $widgets_manager->register( new \Block_Counter_Widget() );
         // $widgets_manager->register( new \Amnesty_Petition_Map_Widget() );
         $widgets_manager->register( new \Amnesty_Petition_Card_Widget() );
     }

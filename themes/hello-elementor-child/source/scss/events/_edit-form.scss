@@ -1,0 +1,38 @@
+@use "../includes/index" as *;
+
+// Organizer panel: AJAX edit form for events and reports ([my_events])
+
+.form-header-actions {
+    margin-bottom: $spacing-xlarge;
+
+    .btn-back {
+        background: none;
+        border: none;
+        color: $color-highlight;
+        cursor: pointer;
+        font-weight: bold;
+        padding: 0;
+        font-size: $font-size-large;
+    }
+
+    .form-title-edit {
+        margin-top: $spacing-large;
+    }
+}
+
+.form-section-title {
+    margin-top: $spacing-xlarge;
+    margin-bottom: 16px;
+}
+
+.form-actions-inline {
+    display: flex;
+    align-items: center;
+    gap: $spacing-large;
+    margin-top: $spacing-large;
+}
+
+.ajax-form-wrapper {
+    display: none;
+    padding-top: $spacing-xlarge;
+}

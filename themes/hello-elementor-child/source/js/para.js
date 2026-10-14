@@ -22,7 +22,7 @@ jQuery(document).ready(function ($) {
                 this.fileUploader();
                 this.initPanelAjax();
                 this.stickyHeader();
-                this.blockCounter();
+                // this.blockCounter();
                 this.eventModal()
             },
 
@@ -48,21 +48,22 @@ jQuery(document).ready(function ($) {
                             let initialBounds = L.latLngBounds();
 
                             eventsData.forEach(function (eventItem) {
-                                let markerClass = eventItem.is_public ? 'amnesty-pin-public' : 'amnesty-pin-private';
+                                let markerClass = eventItem.is_public ? 'marker-public' : 'marker-private';
 
-                                let customIcon = L.icon({
-                                    iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-                                    shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-                                    iconAnchor: [12, 41],
-                                    popupAnchor: [1, -34],
-                                    className: markerClass
+                                let customIcon = L.divIcon({
+                                    className: 'amnesty-custom-marker ' + markerClass,
+                                    iconSize: [24, 24],   
+                                    iconAnchor: [12, 12], 
+                                    popupAnchor: [0, -14]
                                 });
 
+                                // Initialize marker with the custom icon
                                 let marker = L.marker([eventItem.lat, eventItem.lng], { icon: customIcon });
-                                
+
                                 let popupText = '<strong>' + eventItem.title + '</strong><br>' + eventItem.address;
+
                                 if (!eventItem.is_public) {
-                                    popupText += '<br><br><span style="color: #d32f2f; font-weight: bold; padding: 2px 0;">Wydarzenie zamknięte</span><br><span style="font-size: 11px;">(niedostępne dla osób z zewnątrz)</span>';
+                                    popupText += '<br><br><span style="color: #dc0032; font-weight: bold; padding: 2px 0;">Wydarzenie zamknięte</span><br><span style="font-size: 11px;">(niedostępne dla osób z zewnątrz)</span>';
                                 }
 
                                 marker.bindPopup(popupText);
@@ -312,62 +313,62 @@ jQuery(document).ready(function ($) {
                 });
             },
 
-            blockCounter: function() {
-                const counters = document.querySelectorAll('.custom-block-counter-wrapper');
+            // blockCounter: function() {
+            //     const counters = document.querySelectorAll('.custom-block-counter-wrapper');
                 
-                if (!counters.length) return;
+            //     if (!counters.length) return;
 
-                // Uruchamiamy animację dopiero, gdy użytkownik dojedzie do licznika (widoczność w 50%)
-                const observer = new IntersectionObserver((entries, obs) => {
-                    entries.forEach(entry => {
-                        if (entry.isIntersecting) {
-                            animateCounter(entry.target);
-                            obs.unobserve(entry.target);
-                        }
-                    });
-                }, { threshold: 0.5 });
+            //     // Uruchamiamy animację dopiero, gdy użytkownik dojedzie do licznika (widoczność w 50%)
+            //     const observer = new IntersectionObserver((entries, obs) => {
+            //         entries.forEach(entry => {
+            //             if (entry.isIntersecting) {
+            //                 animateCounter(entry.target);
+            //                 obs.unobserve(entry.target);
+            //             }
+            //         });
+            //     }, { threshold: 0.5 });
 
-                counters.forEach(counter => {
-                    observer.observe(counter);
-                });
+            //     counters.forEach(counter => {
+            //         observer.observe(counter);
+            //     });
 
-                // Główna logika licząca
-                function animateCounter(wrapper) {
-                    const targetValue = parseInt(wrapper.getAttribute('data-target'), 10);
-                    const duration = parseInt(wrapper.getAttribute('data-duration'), 10);
-                    const targetLength = targetValue.toString().length;
-                    const spans = wrapper.querySelectorAll('.counter-digit');
+            //     // Główna logika licząca
+            //     function animateCounter(wrapper) {
+            //         const targetValue = parseInt(wrapper.getAttribute('data-target'), 10);
+            //         const duration = parseInt(wrapper.getAttribute('data-duration'), 10);
+            //         const targetLength = targetValue.toString().length;
+            //         const spans = wrapper.querySelectorAll('.counter-digit');
                     
-                    let startTime = null;
+            //         let startTime = null;
 
-                    function update(currentTime) {
-                        if (!startTime) startTime = currentTime;
-                        const elapsed = currentTime - startTime;
+            //         function update(currentTime) {
+            //             if (!startTime) startTime = currentTime;
+            //             const elapsed = currentTime - startTime;
                         
-                        const progress = Math.min(elapsed / duration, 1);
-                        const easeOutProgress = 1 - Math.pow(1 - progress, 3);
+            //             const progress = Math.min(elapsed / duration, 1);
+            //             const easeOutProgress = 1 - Math.pow(1 - progress, 3);
                         
-                        const currentNumber = Math.floor(targetValue * easeOutProgress);
-                        const paddedNumber = currentNumber.toString().padStart(targetLength, '0');
+            //             const currentNumber = Math.floor(targetValue * easeOutProgress);
+            //             const paddedNumber = currentNumber.toString().padStart(targetLength, '0');
                         
-                        spans.forEach((span, index) => {
-                            span.textContent = paddedNumber[index];
-                        });
+            //             spans.forEach((span, index) => {
+            //                 span.textContent = paddedNumber[index];
+            //             });
 
-                        if (progress < 1) {
-                            requestAnimationFrame(update);
-                        } else {
-                            // Zabezpieczenie dokładnej wartości docelowej po zakończeniu klatki
-                            const finalPadded = targetValue.toString().padStart(targetLength, '0');
-                            spans.forEach((span, index) => {
-                                span.textContent = finalPadded[index];
-                            });
-                        }
-                    }
+            //             if (progress < 1) {
+            //                 requestAnimationFrame(update);
+            //             } else {
+            //                 // Zabezpieczenie dokładnej wartości docelowej po zakończeniu klatki
+            //                 const finalPadded = targetValue.toString().padStart(targetLength, '0');
+            //                 spans.forEach((span, index) => {
+            //                     span.textContent = finalPadded[index];
+            //                 });
+            //             }
+            //         }
 
-                    requestAnimationFrame(update);
-                }
-            },
+            //         requestAnimationFrame(update);
+            //     }
+            // },
 
             eventModal: function() {
                 const modal = document.getElementById('amnesty-event-modal');

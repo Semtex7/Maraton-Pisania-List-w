@@ -1,0 +1,103 @@
+@use "../includes/index" as *;
+
+// Organizer panel: "my events" grid ([my_events]) with row action buttons
+
+$grid-columns-layout: 1fr 2fr 1.5fr 3fr;
+
+.events-grid-header {
+    display: grid;
+    grid-template-columns: $grid-columns-layout;
+    margin-bottom: 15px; // Space between floating header and grid body
+
+    .header-cell {
+        font-weight: 700;
+        text-transform: uppercase;
+        text-align: center;
+        letter-spacing: 0.5px;
+    }
+}
+
+.events-grid-body {
+    display: flex;
+    flex-direction: column;
+    width: 100%;
+    background-color: #fff;
+
+    // The trick to avoid double borders:
+    // Container handles the outer Top and Left borders
+    border-top: 2px solid #000;
+    border-left: 2px solid #000;
+
+    .events-grid-row {
+        display: grid;
+        grid-template-columns: $grid-columns-layout;
+
+        .grid-cell {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            padding: 20px 15px;
+
+            // Cells handle their own Bottom and Right borders
+            border-bottom: 2px solid #000;
+            border-right: 2px solid #000;
+
+            &.actions-cell {
+                flex-wrap: wrap;
+                gap: 12px;
+            }
+
+            &.date-cell {
+                min-width: 150px;
+            }
+        }
+    }
+}
+
+// Mobile: rows become stacked cards
+@media (max-width: 900px) {
+    .events-grid-header {
+        display: none; // Hide floating headers on mobile
+    }
+
+    .events-grid-body {
+        border-top: none;
+        border-left: none;
+        background-color: transparent;
+
+        .events-grid-row {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 20px;
+            border-top: 2px solid #000;
+            border-left: 2px solid #000;
+            background-color: #fff;
+
+            .grid-cell {
+                justify-content: flex-start;
+                text-align: left;
+            }
+        }
+    }
+}
+
+// Buttons inside the table
+.btn-edit,
+.btn-submit {
+    color: $color-text-light;
+    padding: 6px 12px;
+    border: none;
+    border-radius: $border-radius-base;
+    cursor: pointer;
+    font-size: $font-size-medium;
+}
+
+.btn-edit {
+    background: $color-highlight;
+}
+
+.btn-submit {
+    background: $color-success;
+    margin-left: 8px;
+}

@@ -1,0 +1,22 @@
+@use "../variables" as *;
+
+// Event edit screen: report meta box (functions/events-reports.php)
+
+.report-meta-table {
+    .report-table-th {
+        width: 20%;
+        padding-bottom: $spacing-large;
+    }
+
+    .report-table-td {
+        padding-bottom: $spacing-large;
+    }
+
+    .report-content-box {
+        background: $color-bg-light;
+        padding: $spacing-large;
+        border: $border-width-base solid $color-border-light;
+        border-radius: $border-radius-base;
+        white-space: pre-wrap;
+    }
+}

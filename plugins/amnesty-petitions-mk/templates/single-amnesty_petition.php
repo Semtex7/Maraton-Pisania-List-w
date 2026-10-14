@@ -47,7 +47,10 @@ get_header(); ?>
                     <?php endif; ?>
 
                     <?php if ( ! empty( $short_desc ) ) : ?>
-                        <p class="amnesty-short-desc"><?php echo esc_html( $short_desc ); ?></p>
+                        <!-- Zmieniono na wpautop, aby zachować akapity z panelu admina -->
+                        <div class="amnesty-short-desc">
+                            <?php echo wpautop( esc_html( $short_desc ) ); ?>
+                        </div>
                     <?php endif; ?>
 
                     <div class="amnesty-main-content">
@@ -89,9 +92,37 @@ get_header(); ?>
                 ?>
             </section>
 
-            <!-- Map and Materials sections remain unchanged below... -->
-            
-            <?php if ( ! empty( $show_map ) ) : ?>
+            <!-- Section: Additional materials (files added in the petition meta box) -->
+            <?php
+            $materials = is_array( $materials ) ? array_filter( $materials, function ( $m ) { return ! empty( $m['url'] ); } ) : array();
+            if ( ! empty( $materials ) ) :
+            ?>
+                <section class="amnesty-petition-materials-section">
+                    <h2 class="amnesty-materials-title"><?php esc_html_e( 'Pobierz materiały dodatkowe', 'amnesty-petitions' ); ?></h2>
+                    <ul class="amnesty-materials-list">
+                        <?php foreach ( $materials as $material ) :
+                            $url   = $material['url'];
+                            $title = ! empty( $material['title'] ) ? $material['title'] : wp_basename( wp_parse_url( $url, PHP_URL_PATH ) );
+                            $ext   = strtoupper( pathinfo( wp_parse_url( $url, PHP_URL_PATH ), PATHINFO_EXTENSION ) );
+                        ?>
+                            <li class="amnesty-material-item">
+                                <a href="<?php echo esc_url( $url ); ?>" class="amnesty-material-link" target="_blank" rel="noopener" download>
+                                    <span class="amnesty-material-name"><?php echo esc_html( $title ); ?></span>
+                                    <?php if ( $ext ) : ?>
+                                        <span class="amnesty-material-ext"><?php echo esc_html( $ext ); ?></span>
+                                    <?php endif; ?>
+                                </a>
+                            </li>
+                        <?php endforeach; ?>
+                    </ul>
+                </section>
+            <?php endif; ?>
+
+            <?php
+            // Signatories map: only when its AJAX endpoint (includes/ajax-map.php) is loaded,
+            // otherwise the map would render empty.
+            if ( ! empty( $show_map ) && has_action( 'wp_ajax_nopriv_get_amnesty_map_data' ) ) :
+            ?>
                 <section class="amnesty-petition-map-section" style="margin-bottom: 40px;">
                     <h2 style="margin-top: 0; text-align: center; font-weight: 900; text-transform: uppercase;">
                         <?php esc_html_e( 'Skąd dołączają sygnatariusze?', 'amnesty-petitions' ); ?>

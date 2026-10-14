@@ -157,4 +157,67 @@ document.addEventListener('DOMContentLoaded', function() {
             if (e.key === 'Escape' && overlay.classList.contains('is-active')) closeModal();
         });
     }
+
+    // 4. BLOCK COUNTER ANIMATION LOGIC
+    
+    const initBlockCounter = () => {
+        const counters = document.querySelectorAll('.custom-block-counter-wrapper');
+        
+        if (!counters.length) return;
+
+        // Start animation only when user scrolls to the counter (50% visibility)
+        const observer = new IntersectionObserver((entries, obs) => {
+            entries.forEach(entry => {
+                if (entry.isIntersecting) {
+                    animateCounter(entry.target);
+                    obs.unobserve(entry.target);
+                }
+            });
+        }, { threshold: 0.5 });
+
+        counters.forEach(counter => {
+            observer.observe(counter);
+        });
+
+        // Main counting logic
+        function animateCounter(wrapper) {
+            const targetValue = parseInt(wrapper.getAttribute('data-target'), 10);
+            const duration = parseInt(wrapper.getAttribute('data-duration'), 10);
+            const targetLength = targetValue.toString().length;
+            const spans = wrapper.querySelectorAll('.counter-digit');
+            
+            let startTime = null;
+
+            function update(currentTime) {
+                if (!startTime) startTime = currentTime;
+                const elapsed = currentTime - startTime;
+                
+                const progress = Math.min(elapsed / duration, 1);
+                // Ease out effect
+                const easeOutProgress = 1 - Math.pow(1 - progress, 3);
+                
+                const currentNumber = Math.floor(targetValue * easeOutProgress);
+                const paddedNumber = currentNumber.toString().padStart(targetLength, '0');
+                
+                spans.forEach((span, index) => {
+                    span.textContent = paddedNumber[index];
+                });
+
+                if (progress < 1) {
+                    requestAnimationFrame(update);
+                } else {
+                    // Ensure the exact target value is reached at the end
+                    const finalPadded = targetValue.toString().padStart(targetLength, '0');
+                    spans.forEach((span, index) => {
+                        span.textContent = finalPadded[index];
+                    });
+                }
+            }
+
+            requestAnimationFrame(update);
+        }
+    };
+
+    // Initialize the counter
+    initBlockCounter();
 });

@@ -18,8 +18,8 @@ function ajax_get_event_form() {
 
     // Fetch data
     $val_org    = $post->post_title;
-    $val_start  = function_exists('get_field') ? get_field('data_czas_rozpoczecia', $post_id) : get_post_meta($post_id, 'data_czas_rozpoczecia', true);
-    $val_end    = function_exists('get_field') ? get_field('data_czas_zakonczenia', $post_id) : get_post_meta($post_id, 'data_czas_zakonczenia', true);
+    $val_start  = maraton_get_event_datetime($post_id, 'start');
+    $val_end    = maraton_get_event_datetime($post_id, 'end');
     $val_venue  = function_exists('get_field') ? get_field('nazwa_lokalu', $post_id) : get_post_meta($post_id, 'nazwa_lokalu', true);
     $val_street = function_exists('get_field') ? get_field('ulica', $post_id) : get_post_meta($post_id, 'ulica', true);
     $val_city   = function_exists('get_field') ? get_field('miejscowosc', $post_id) : get_post_meta($post_id, 'miejscowosc', true);
@@ -31,6 +31,7 @@ function ajax_get_event_form() {
     if ($val_end) $val_end = date('Y-m-d\TH:i', strtotime($val_end));
     
     $check_public = ($val_public == '1' || $val_public === 'tak' || $val_public === true) ? 'checked' : '';
+    $check_map    = ( '1' === (string) get_post_meta($post_id, 'widoczne_na_mapie', true) ) ? 'checked' : '';
     $check_access = ($val_access == '1' || $val_access === 'tak' || $val_access === true) ? 'checked' : '';
 
     ob_start();
@@ -66,7 +67,13 @@ function ajax_get_event_form() {
         <div class="form-section checkbox-option">
             <label>
                 <input type="checkbox" name="is_public_event" value="1" <?php echo $check_public; ?>> 
-                <strong><?php esc_html_e('Wydarzenie publiczne (otwarte dla osób z zewnątrz)', 'amnestympl'); ?></strong>
+                <strong><?php esc_html_e('Wydarzenie publiczne (otwarte dla osób z zewnątrz).', 'amnestympl'); ?></strong>
+            </label>
+        </div>
+        <div class="form-section checkbox-option">
+            <label>
+                <input type="checkbox" name="show_on_map" value="1" <?php echo $check_map; ?>>
+                <strong><?php esc_html_e('Zaznacz, by wydarzenie było widoczne na mapie.', 'amnestympl'); ?></strong>
             </label>
         </div>
         <div class="form-section">
@@ -130,14 +137,23 @@ function ajax_save_event_form() {
     $start  = sanitize_text_field($_POST['start_datetime']);
     $end    = sanitize_text_field($_POST['end_datetime']);
 
+    $start_ts = strtotime($start);
+    $end_ts   = ! empty($end) ? strtotime($end) : false;
+
+    // Dates are stored in both formats used by the theme (see maraton_get_event_datetime())
     $fields_to_save = array(
-        'data_czas_rozpoczecia' => date('Y-m-d H:i:s', strtotime($start)),
-        'data_czas_zakonczenia' => !empty($end) ? date('Y-m-d H:i:s', strtotime($end)) : '',
+        'data_czas_rozpoczecia' => date('Y-m-d H:i:s', $start_ts),
+        'data_czas_zakonczenia' => $end_ts ? date('Y-m-d H:i:s', $end_ts) : '',
+        'data_rozpoczecia'      => date('Y-m-d', $start_ts),
+        'godzina_rozpoczecia'   => date('H:i', $start_ts),
+        'data_zakonczenia'      => $end_ts ? date('Y-m-d', $end_ts) : '',
+        'godzina_zakonczenia'   => $end_ts ? date('H:i', $end_ts) : '',
         'nazwa_lokalu'          => sanitize_text_field($_POST['venue_name']),
         'ulica'                 => $street,
         'miejscowosc'           => $city,
         'kod_pocztowy'          => sanitize_text_field($_POST['zip_code']),
         'wydarzenie_publiczne'  => isset($_POST['is_public_event']) ? 1 : 0,
+        'widoczne_na_mapie'     => isset($_POST['show_on_map']) ? 1 : 0,
         'dostepnosc'            => isset($_POST['accessibility']) ? 1 : 0,
     );
 
@@ -222,7 +238,7 @@ function render_my_events_shortcode() {
                 $city = function_exists('get_field') ? get_field('miejscowosc', $post_id) : get_post_meta($post_id, 'miejscowosc', true);
                 
                 // Fetch and format start date
-                $raw_start_date = function_exists('get_field') ? get_field('data_czas_rozpoczecia', $post_id, false) : get_post_meta($post_id, 'data_czas_rozpoczecia', true);
+                $raw_start_date = maraton_get_event_datetime($post_id, 'start');
                 $formatted_date = !empty($raw_start_date) ? date('d/m/Y', strtotime($raw_start_date)) : '-';
                 
                 // DATA ROW
@@ -235,12 +251,58 @@ function render_my_events_shortcode() {
                 // ACTIONS CELL
                 echo '<div class="grid-cell actions-cell">';
                 
+                // ====================================================
+                // NEW: CHECK FOR EXISTING MATERIAL ORDERS (SAFE METHOD)
+                // ====================================================
+                
+                // Używamy get_posts(), aby nie zaburzać działania głównej pętli while
+                $order_posts = get_posts(array(
+                    'post_type'      => 'material_order',
+                    'meta_query'     => array(
+                        array(
+                            'key'   => 'powiazane_wydarzenie_id',
+                            'value' => $post_id,
+                        )
+                    ),
+                    'posts_per_page' => 1,
+                    'fields'         => 'ids' // Pobieramy tylko ID w celach optymalizacyjnych
+                ));
+                
+                if ( ! empty($order_posts) ) {
+                    $order_id = $order_posts[0];
+                    $carrier = get_post_meta($order_id, 'przewoznik', true);
+                    
+                    // Retrieve delivery details based on carrier type
+                    $delivery_info = '';
+                    if ($carrier === 'DPD Pickup') {
+                        $locker_id = get_post_meta($order_id, 'punkt_odbioru_id', true);
+                        $delivery_info = sprintf(esc_html__('Punkt: %s', 'amnestympl'), $locker_id);
+                    } elseif ($carrier === 'Kurier DPD') {
+                        $street = get_post_meta($order_id, 'adres_ulica', true);
+                        $postcode = get_post_meta($order_id, 'adres_kod', true);
+                        $order_city = get_post_meta($order_id, 'adres_miasto', true);
+                        $delivery_info = sprintf(esc_html__('Kurier: %s, %s %s', 'amnestympl'), $street, $postcode, $order_city);
+                    }
+
+                    // Display the "Materials Ordered" status badge
+                    echo '<span class="btn-action status-ordered" style="background-color: #f1c40f; title="' . esc_attr($delivery_info) . '">';
+                    echo esc_html__('Materiały zamówione', 'amnestympl');
+                    
+                    // Append small text showing the delivery address/point underneath the main badge text
+                    if (!empty($delivery_info)) {
+                        echo '<span style="display: block; font-size: 10px; line-height: 1.1; margin-top: 4px; font-weight: normal;">' . esc_html($delivery_info) . '</span>';
+                    }
+                    echo '</span>';
+                }
+
+                // ----------------------------------------------------
+
                 echo '<button class="btn-action btn-edit open-ajax-edit" data-id="' . esc_attr($post_id) . '">' . esc_html__('Edytuj', 'amnestympl') . '</button>';
                 
                 // 7-DAY TIME LOCK LOGIC FOR REPORTS
                 $is_report_submitted = get_post_meta($post_id, 'raport_zlozony', true);
                 
-                $event_date = function_exists('get_field') ? get_field('data_czas_zakonczenia', $post_id, false) : get_post_meta($post_id, 'data_czas_zakonczenia', true);
+                $event_date = maraton_get_event_datetime($post_id, 'end');
                 if ( empty($event_date) ) {
                     $event_date = $raw_start_date;
                 }
@@ -252,7 +314,6 @@ function render_my_events_shortcode() {
                     if ( $current_timestamp >= $target_timestamp ) {
                         if ( $is_report_submitted === '1' ) {
                             echo '<span class="btn-action status-success">' . esc_html__('Raport wysłany', 'amnestympl') . '</span>';
-                            echo '<a href="?download_report=' . esc_attr($post_id) . '" class="btn-action btn-download" data-id="' . esc_attr($post_id) . '">' . esc_html__('Pobierz raport PDF', 'amnestympl') . '</a>';
                         } else {
                             echo '<button class="btn-action btn-submit open-ajax-report" data-id="' . esc_attr($post_id) . '">' . esc_html__('Wyślij raport', 'amnestympl') . '</button>';
                         }

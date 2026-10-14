@@ -15,7 +15,7 @@ $maraton_modules = array(
     'functions/events-panel.php',
     'functions/events-materials.php',
     'functions/events-reports.php',
-    'functions/events-shipping-api.php',
+    'functions/events-list.php',
     'functions/shortcodes.php',
 );
 

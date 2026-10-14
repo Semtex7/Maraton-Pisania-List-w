@@ -1,0 +1,112 @@
+@use "../includes/index" as *;
+
+// Events list page (/wydarzenie/, archive-wydarzenie.php)
+
+.events-list-page {
+    width: 100%;
+    max-width: 1200px;
+    margin: 60px auto;
+    padding: 0 24px;
+    box-sizing: border-box;
+
+    .events-list-title {
+        font-weight: 900;
+        text-transform: uppercase;
+        margin: 0 0 30px;
+    }
+
+    .events-list-search {
+        width: 100%;
+        padding: 12px;
+        margin-bottom: 24px;
+        border: 2px solid #000;
+        font-size: 16px;
+        box-sizing: border-box;
+    }
+
+    .events-list {
+        list-style: none;
+        margin: 0;
+        padding: 0;
+        border-top: 2px solid #000;
+    }
+
+    .events-list-item {
+        display: grid;
+        grid-template-columns: 220px 1fr auto;
+        gap: 20px;
+        align-items: center;
+        padding: 20px 0;
+        border-bottom: 2px solid #000;
+
+        &[hidden] {
+            display: none;
+        }
+    }
+
+    .events-list-date {
+        font-weight: 900;
+    }
+
+    .events-list-name {
+        font-size: 20px;
+        font-weight: 900;
+        margin: 0 0 6px;
+        line-height: 1.2;
+    }
+
+    .events-list-venue,
+    .events-list-address {
+        line-height: 1.4;
+    }
+
+    .events-list-badges {
+        display: flex;
+        flex-direction: column;
+        align-items: flex-end;
+        gap: 6px;
+    }
+
+    .events-list-badge {
+        font-size: 13px;
+        font-weight: 700;
+        padding: 4px 10px;
+        border: 2px solid #000;
+        white-space: nowrap;
+
+        // Same colours as the map markers
+        &.badge-public {
+            background-color: #84cc16;
+        }
+
+        &.badge-private {
+            background-color: #dc0032;
+            color: #fff;
+        }
+
+        &.badge-accessible {
+            white-space: normal;
+            text-align: right;
+            max-width: 220px;
+        }
+    }
+}
+
+@media (max-width: 768px) {
+    .events-list-page {
+        .events-list-item {
+            grid-template-columns: 1fr;
+            gap: 8px;
+        }
+
+        .events-list-badges {
+            flex-direction: row;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+
+        .events-list-badge.badge-accessible {
+            text-align: left;
+        }
+    }
+}

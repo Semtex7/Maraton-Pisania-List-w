@@ -4,11 +4,18 @@ if ( ! defined( 'ABSPATH' ) ) exit;
 
 // --- NIESTANDARDOWA FUNKCJA LOGUJĄCA ---
 function amnesty_custom_log( $message ) {
-    // Tworzy ścieżkę do pliku amnesty-debug.log w głównym folderze wtyczki
-    $log_file = AMNESTY_PETITIONS_PATH . 'amnesty-debug.log';
+    // Log zawiera dane osobowe, więc nie może trafiać do katalogu pluginu (publiczny i wersjonowany).
+    // Domyślnie _wpeprivate (WP Engine blokuje do niego dostęp z sieci); można nadpisać stałą AMNESTY_PETITIONS_LOG_DIR.
+    $log_dir = defined( 'AMNESTY_PETITIONS_LOG_DIR' ) ? AMNESTY_PETITIONS_LOG_DIR : ABSPATH . '_wpeprivate';
+
+    if ( ! is_dir( $log_dir ) || ! wp_is_writable( $log_dir ) ) {
+        error_log( '[amnesty-petitions] ' . $message );
+        return;
+    }
+
     $time = current_time( 'mysql' );
-    // Zapisuje wiadomość do pliku, dodając nową linię na końcu (FILE_APPEND zapobiega nadpisywaniu)
-    file_put_contents( $log_file, "[$time] $message\n", FILE_APPEND );
+    // FILE_APPEND zapobiega nadpisywaniu
+    file_put_contents( trailingslashit( $log_dir ) . 'amnesty-debug.log', "[$time] $message\n", FILE_APPEND | LOCK_EX );
 }
 
 // Handle Petition Submission
@@ -50,16 +57,9 @@ function amnesty_petition_handle_submission() {
     $petitions_to_process = array( $main_petition_id );
     
     if ( $sign_all ) {
-        // Fetch all published petitions
-        $all_petitions = get_posts( array(
-            'post_type'      => 'amnesty_petition',
-            'post_status'    => 'publish',
-            'posts_per_page' => -1,
-            'fields'         => 'ids'
-        ) );
-        if ( ! empty( $all_petitions ) ) {
-            $petitions_to_process = $all_petitions;
-        }
+        // Sign all petitions of the current edition; the petition being signed is always included
+        $edition_petitions    = array_map( 'intval', amnesty_get_edition_petition_ids() );
+        $petitions_to_process = array_values( array_unique( array_merge( $petitions_to_process, $edition_petitions ) ) );
     }
 
     $success_count = 0;
@@ -192,11 +192,12 @@ function amnesty_sf_create_record( $object_name, $data, $instance_url, $access_t
     return false;
 }
 
-function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $phone, $city, $topic_name ) {
+// OAuth client_credentials. Returns array( instance_url, access_token ) or false (errors are logged).
+function amnesty_sf_get_access_token() {
     $instance_url = rtrim( get_option( 'amnesty_sf_instance_url' ), '/' );
     $client_id    = get_option( 'amnesty_sf_client_id' );
     $secret       = get_option( 'amnesty_sf_client_secret' );
-    
+
     // Check if API credentials exist
     if ( empty( $instance_url ) || empty( $client_id ) || empty( $secret ) ) {
         amnesty_custom_log( 'Salesforce Auth Error: Missing API credentials.' );
@@ -204,24 +205,32 @@ function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $p
     }
 
     // Authenticate and get the access token
-    $token_res = wp_remote_post( 
-        $instance_url . "/services/oauth2/token", 
-        array( 'body' => array( 'grant_type' => 'client_credentials', 'client_id' => $client_id, 'client_secret' => $secret ) ) 
+    $token_res = wp_remote_post(
+        $instance_url . "/services/oauth2/token",
+        array( 'body' => array( 'grant_type' => 'client_credentials', 'client_id' => $client_id, 'client_secret' => $secret ) )
     );
-    
+
     if ( is_wp_error( $token_res ) ) {
         amnesty_custom_log( 'Salesforce Token WP Error: ' . $token_res->get_error_message() );
         return false;
     }
-    
+
     $token_body = json_decode( wp_remote_retrieve_body( $token_res ) );
-    
+
     if ( ! isset( $token_body->access_token ) ) {
         amnesty_custom_log( 'Salesforce Token API Error: ' . wp_remote_retrieve_body( $token_res ) );
         return false;
     }
-    
-    $access_token = $token_body->access_token;
+
+    return array( $instance_url, $token_body->access_token );
+}
+
+function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $phone, $city, $topic_name ) {
+    $auth = amnesty_sf_get_access_token();
+    if ( ! $auth ) {
+        return false;
+    }
+    list( $instance_url, $access_token ) = $auth;
 
     // 1. Check if the Topic exists in Salesforce
     $topic = amnesty_sf_run_query( "SELECT Id FROM Topic WHERE Name = '" . esc_sql( $topic_name ) . "' LIMIT 1", $instance_url, $access_token );
@@ -279,4 +288,74 @@ function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $p
     }
     
     return true;
+}
+
+/* ====================================================================
+ * SALESFORCE TOPIC SEARCH (petition meta box: "Salesforce Topic Name")
+ * ==================================================================== */
+
+// Escapes a value for use inside a quoted SOQL LIKE pattern
+function amnesty_sf_escape_like( $value ) {
+    return strtr( $value, array( '\\' => '\\\\', "'" => "\\'", '%' => '\\%', '_' => '\\_' ) );
+}
+
+// Returns up to 20 Topic names containing $term, or WP_Error. Cached for 10 minutes.
+function amnesty_sf_search_topics( $term ) {
+    $term      = trim( $term );
+    $cache_key = 'amnesty_sf_topics_' . md5( strtolower( $term ) );
+    $cached    = get_transient( $cache_key );
+    if ( false !== $cached ) {
+        return $cached;
+    }
+
+    $auth = amnesty_sf_get_access_token();
+    if ( ! $auth ) {
+        return new WP_Error( 'sf_auth', __( 'Brak połączenia z Salesforce (sprawdź dane API w ustawieniach).', 'amnesty-petitions' ) );
+    }
+    list( $instance_url, $access_token ) = $auth;
+
+    $where = '' === $term ? '' : " WHERE Name LIKE '%" . amnesty_sf_escape_like( $term ) . "%'";
+    $soql  = 'SELECT Name FROM Topic' . $where . ' ORDER BY Name LIMIT 20';
+
+    $response = wp_remote_get(
+        $instance_url . '/services/data/v58.0/query/?q=' . rawurlencode( $soql ),
+        array( 'headers' => array( 'Authorization' => 'Bearer ' . $access_token ), 'timeout' => 15 )
+    );
+    if ( is_wp_error( $response ) ) {
+        amnesty_custom_log( 'Salesforce Topic Search WP Error: ' . $response->get_error_message() );
+        return new WP_Error( 'sf_http', __( 'Błąd połączenia z Salesforce.', 'amnesty-petitions' ) );
+    }
+
+    $body = json_decode( wp_remote_retrieve_body( $response ) );
+    if ( ! is_object( $body ) || ! isset( $body->records ) || ! is_array( $body->records ) ) {
+        amnesty_custom_log( 'Salesforce Topic Search API Error: ' . wp_remote_retrieve_body( $response ) );
+        return new WP_Error( 'sf_api', __( 'Salesforce zwrócił błąd.', 'amnesty-petitions' ) );
+    }
+
+    $names = array();
+    foreach ( $body->records as $record ) {
+        if ( isset( $record->Name ) ) {
+            $names[] = (string) $record->Name;
+        }
+    }
+
+    set_transient( $cache_key, $names, 10 * MINUTE_IN_SECONDS );
+    return $names;
+}
+
+add_action( 'wp_ajax_amnesty_sf_search_topics', 'amnesty_sf_ajax_search_topics' );
+
+function amnesty_sf_ajax_search_topics() {
+    if ( ! current_user_can( 'edit_posts' ) || ! check_ajax_referer( 'amnesty_sf_topics', 'nonce', false ) ) {
+        wp_send_json_error( __( 'Brak uprawnień.', 'amnesty-petitions' ) );
+    }
+
+    $term   = isset( $_POST['term'] ) ? sanitize_text_field( wp_unslash( $_POST['term'] ) ) : '';
+    $result = amnesty_sf_search_topics( $term );
+
+    if ( is_wp_error( $result ) ) {
+        wp_send_json_error( $result->get_error_message() );
+    }
+
+    wp_send_json_success( $result );
 }

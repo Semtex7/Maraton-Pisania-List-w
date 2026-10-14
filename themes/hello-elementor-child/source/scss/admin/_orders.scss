@@ -1,0 +1,68 @@
+@use "../variables" as *;
+
+// Material orders: details meta box, status select and list column badges
+// (functions/events-materials.php)
+
+.order-meta-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: $spacing-large;
+
+    th {
+        text-align: left;
+        padding: $spacing-medium;
+        background: $color-bg-light;
+        border-bottom: $border-width-base solid $color-border-light;
+        width: 30%;
+    }
+
+    td {
+        padding: $spacing-medium;
+        border-bottom: $border-width-base solid $color-border-light;
+        font-size: $font-size-medium;
+    }
+
+    .package-size-value {
+        color: $color-highlight;
+    }
+
+    .locker-id-value {
+        font-size: 16px;
+        background: $color-bg-warning-light;
+        padding: 4px 8px;
+        border-radius: $border-radius-base;
+        border: $border-width-base solid $color-border-warning;
+    }
+}
+
+.status-select {
+    padding: 6px;
+    font-weight: bold;
+    font-size: $font-size-medium;
+}
+
+.status-badge-admin {
+    padding: 4px 8px;
+    border-radius: $border-radius-base;
+    font-weight: bold;
+
+    &.status-sent {
+        color: $color-text-success-dark;
+        background: $color-bg-success-light;
+    }
+
+    &.status-processing {
+        color: $color-text-info-dark;
+        background: $color-bg-info-alt;
+    }
+
+    &.status-cancelled {
+        color: $color-text-danger-dark;
+        background: $color-bg-danger-light;
+    }
+
+    &.status-pending {
+        color: $color-text-warning-dark;
+        background: $color-bg-warning-light;
+    }
+}

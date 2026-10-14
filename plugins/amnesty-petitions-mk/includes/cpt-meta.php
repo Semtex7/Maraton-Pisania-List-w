@@ -77,7 +77,9 @@ function amnesty_petition_render_meta_box( $post ) {
 
     <div class="amnesty-meta-row">
         <label class="main-label" style="color: #005fb2;">Salesforce Topic Name</label>
-        <input type="text" name="amnesty_petition_topic_name" value="<?php echo esc_attr( $topic_name ); ?>" />
+        <input type="text" name="amnesty_petition_topic_name" id="amnesty-sf-topic" list="amnesty-sf-topic-list" autocomplete="off" value="<?php echo esc_attr( $topic_name ); ?>" data-nonce="<?php echo esc_attr( wp_create_nonce( 'amnesty_sf_topics' ) ); ?>" />
+        <datalist id="amnesty-sf-topic-list"></datalist>
+        <p class="description" id="amnesty-sf-topic-status"><?php esc_html_e( 'Zacznij pisać, aby wyszukać istniejący Topic w Salesforce. Nazwa spoza listy utworzy nowy Topic przy pierwszym podpisie.', 'amnesty-petitions' ); ?></p>
     </div>
 
     <div class="amnesty-meta-row">
@@ -116,7 +118,7 @@ function amnesty_petition_render_meta_box( $post ) {
                 </div>
             <?php endforeach; ?>
         </div>
-        <button type="button" id="amnesty-add-material" class="button button-primary">+ <?php __( 'Dodaj materiał', 'amnesty-petitions' ); ?></button>
+        <button type="button" id="amnesty-add-material" class="button button-primary">+ <?php esc_html_e( 'Dodaj materiał', 'amnesty-petitions' ); ?></button>
     </div>
     <hr>
 
@@ -127,13 +129,11 @@ function amnesty_petition_render_meta_box( $post ) {
     <div class="amnesty-meta-row"><label class="main-label">Docelowa liczba listów (Target)</label><input type="number" name="amnesty_petition_target" value="<?php echo esc_attr( $target ); ?>" /></div>
     <div class="amnesty-meta-row"><label class="main-label">Dodatkowa liczba listów (Offline)</label><input type="number" name="amnesty_petition_extra_letters" value="<?php echo esc_attr( $extra_letters ); ?>" /></div>
     <hr>
-    <!-- <div class="amnesty-meta-row">
-        <label>
-            <input type="checkbox" name="amnesty_petition_show_map" value="1" <?php checked( $show_map, 1 ); ?> />
-            <strong><?php esc_html_e( 'Włącz mapę dla tej petycji', 'amnesty-petitions' ); ?></strong>
-        </label>
-        <p class="description"><?php esc_html_e( 'Zaznacz, jeśli chcesz, aby na stronie tej petycji generowała się mapa na podstawie miast wpisywanych przez sygnatariuszy.', 'amnesty-petitions' ); ?></p>
-    </div> -->
+    <?php
+    // Signatories map is disabled (includes/ajax-map.php is not loaded). An HTML comment does not stop
+    // PHP from running, so the former checkbox markup is kept out as a PHP comment:
+    // <input type="checkbox" name="amnesty_petition_show_map" value="1"> Włącz mapę dla tej petycji
+    ?>
 
     <script>
     jQuery(document).ready(function($){
@@ -153,6 +153,24 @@ function amnesty_petition_render_meta_box( $post ) {
             fileFrame = wp.media({ title: 'Wybierz plik', button: { text: 'Użyj' }, multiple: false });
             fileFrame.on( 'select', function() { var attachment = fileFrame.state().get('selection').first().toJSON(); urlInput.val(attachment.url); });
             fileFrame.open();
+        });
+
+        // Salesforce Topic suggestions (wp_ajax_amnesty_sf_search_topics), debounced
+        var topicInput = $('#amnesty-sf-topic'), topicList = $('#amnesty-sf-topic-list'), topicStatus = $('#amnesty-sf-topic-status'), topicTimer;
+        topicInput.on('input focus', function(){
+            clearTimeout(topicTimer);
+            var term = $.trim(topicInput.val());
+            topicTimer = setTimeout(function(){
+                $.post(ajaxurl, { action: 'amnesty_sf_search_topics', nonce: topicInput.data('nonce'), term: term }, function(res){
+                    topicList.empty();
+                    if ( ! res || ! res.success ) {
+                        topicStatus.text( res && res.data ? res.data : 'Nie udało się pobrać listy z Salesforce.' );
+                        return;
+                    }
+                    $.each(res.data, function(i, name){ topicList.append($('<option>').attr('value', name)); });
+                    topicStatus.text( res.data.length ? 'Znaleziono w Salesforce: ' + res.data.length + ' (wybierz z listy).' : 'Brak pasujących Topiców — zostanie utworzony nowy przy pierwszym podpisie.' );
+                });
+            }, 300);
         });
     });
     </script>

@@ -31,8 +31,6 @@ function register_materials_order_cpt() {
 global $order_form_error;
 $order_form_error = '';
 
-// 2. HANDLE ORDER SUBMISSION
-
 add_action('template_redirect', 'handle_materials_order_submission');
 
 function handle_materials_order_submission() {
@@ -52,21 +50,36 @@ function handle_materials_order_submission() {
         $phone_number = sanitize_text_field($_POST['phone_number']);
         $email        = sanitize_email($_POST['email']);
 
-        // Determine which locker ID to save based on the carrier
+        // Zmienne dla nowych opcji DPD
         $locker_id = '';
-        if ( $carrier === 'InPost' ) {
-            $locker_id = sanitize_text_field($_POST['locker_id_inpost']);
-        } elseif ( $carrier === 'DPD' ) {
+        $address_street = '';
+        $address_postcode = '';
+        $address_city = '';
+
+        if ( $carrier === 'DPD Pickup' ) {
             $locker_id = sanitize_text_field($_POST['locker_id_dpd']);
+            if (empty($locker_id)) {
+                $order_form_error = __('Wpisz kod punktu DPD Pickup.', 'amnestympl');
+                return;
+            }
+        } elseif ( $carrier === 'Kurier DPD' ) {
+            $address_street   = sanitize_text_field($_POST['shipping_street']);
+            $address_postcode = sanitize_text_field($_POST['shipping_postcode']);
+            $address_city     = sanitize_text_field($_POST['shipping_city']);
+            
+            if (empty($address_street) || empty($address_postcode) || empty($address_city)) {
+                $order_form_error = __('Wypełnij pełny adres dostawy dla Kuriera DPD.', 'amnestympl');
+                return;
+            }
         }
 
-        // Validation
-        if ( empty($event_id) || empty($package_size) || empty($carrier) || empty($locker_id) || empty($contact_name) || empty($phone_number) ) {
-            $order_form_error = __('Wypełnij wszystkie wymagane pola i upewnij się, że wybrano punkt odbioru.', 'amnestympl');
+        // Walidacja podstawowych pól
+        if ( empty($event_id) || empty($package_size) || empty($carrier) || empty($contact_name) || empty($phone_number) ) {
+            $order_form_error = __('Wypełnij wszystkie wymagane pola.', 'amnestympl');
             return;
         }
 
-        // --- SAVE TO DATABASE ---
+        // --- ZAPIS DO BAZY DANYCH ---
         $event_title = get_the_title($event_id);
         
         $post_id = wp_insert_post(array(
@@ -79,10 +92,18 @@ function handle_materials_order_submission() {
             update_post_meta($post_id, 'powiazane_wydarzenie_id', $event_id);
             update_post_meta($post_id, 'rozmiar_paczki', $package_size);
             update_post_meta($post_id, 'przewoznik', $carrier);
-            update_post_meta($post_id, 'punkt_odbioru_id', $locker_id);
             update_post_meta($post_id, 'osoba_kontaktowa', $contact_name);
             update_post_meta($post_id, 'telefon', $phone_number);
             update_post_meta($post_id, 'email', $email);
+
+            // Zapis odpowiednich danych dostawy w zależności od wyboru
+            if ( $carrier === 'DPD Pickup' ) {
+                update_post_meta($post_id, 'punkt_odbioru_id', $locker_id);
+            } else {
+                update_post_meta($post_id, 'adres_ulica', $address_street);
+                update_post_meta($post_id, 'adres_kod', $address_postcode);
+                update_post_meta($post_id, 'adres_miasto', $address_city);
+            }
 
             $return_url = wp_get_referer() ? wp_get_referer() : get_permalink();
             wp_safe_redirect(add_query_arg('order_added', '1', $return_url));
@@ -91,7 +112,7 @@ function handle_materials_order_submission() {
     }
 }
 
-// 3. SHORTCODE: ORDER FORM WITH INLINE INPOST & DPD LOGIC
+// 3. SHORTCODE: ORDER FORM 
 
 add_shortcode('materials_order', 'render_materials_order_form');
 
@@ -104,33 +125,6 @@ function render_materials_order_form() {
 
     ob_start();
 
-    // 1. RENDER DIGITAL MATERIALS (GLOBAL)
-    $global_materials = array();
-    for ( $i = 1; $i <= 3; $i++ ) {
-        $title = get_option('global_mat_' . $i . '_title');
-        $url   = get_option('global_mat_' . $i . '_url');
-        if ( ! empty($url) ) {
-            $global_materials[] = array( 
-                'title' => $title ? $title : __('Pobierz plik', 'amnestympl'), 
-                'url'   => $url 
-            );
-        }
-    }
-
-    if ( ! empty($global_materials) ) {
-        echo '<div class="global-materials-panel">';
-        echo '<h4 class="global-materials-title">📂 ' . esc_html__('Materiały cyfrowe do pobrania:', 'amnestympl') . '</h4>';
-        echo '<div class="global-materials-list">';
-        foreach ( $global_materials as $mat ) {
-            echo '<a href="' . esc_url($mat['url']) . '" target="_blank" class="btn-material-download">';
-            echo esc_html($mat['title']) . ' &darr;';
-            echo '</a>';
-        }
-        echo '</div>';
-        echo '</div>';
-    }
-
-    // 2. CHECK EVENTS FOR PHYSICAL ORDER FORM
     $current_user_id = get_current_user_id();
     $events_args = array(
         'post_type'      => 'wydarzenie',
@@ -144,9 +138,8 @@ function render_materials_order_form() {
         return ob_get_clean();
     }
 
-    // Messages
     if ( isset($_GET['order_added']) && $_GET['order_added'] == '1' ) {
-        echo '<div class="alert-message alert-success">📦 ' . esc_html__('Dziękujemy! Twoje zamówienie na materiały z Amnesty International zostało przyjęte.', 'amnestympl') . '</div>';
+        echo '<div class="alert-message alert-success">📦 ' . esc_html__('Dziękujemy! Twoje zamówienie zostało przyjęte.', 'amnestympl') . '</div>';
     }
 
     if ( ! empty($order_form_error) ) {
@@ -154,9 +147,6 @@ function render_materials_order_form() {
     }
 
     ?>
-    <script src="https://geowidget.easypack24.net/js/sdk-for-javascript.js"></script>
-    <link rel="stylesheet" href="https://geowidget.easypack24.net/css/easypack.css"/>
-
     <form action="" method="post" class="new-event-form order-materials-form">
         <?php wp_nonce_field('save_order_action', 'order_nonce'); ?>
 
@@ -218,47 +208,50 @@ function render_materials_order_form() {
         <h3 class="form-section-title uppercase-title"><?php esc_html_e('Sposób dostawy', 'amnestympl'); ?></h3>
         <div class="form-section custom-radio-list horizontal">
             <label class="custom-radio-item">
-                <input type="radio" name="carrier" id="carrier_dpd" value="DPD" required>
+                <input type="radio" name="carrier" id="carrier_dpd_kurier" value="Kurier DPD" required>
                 <span class="radio-custom-circle"></span>
                 <div class="radio-text">
                     <span class="radio-main">KURIER DPD</span>
                 </div>
             </label>
             <label class="custom-radio-item">
-                <input type="radio" name="carrier" id="carrier_inpost" value="InPost">
+                <input type="radio" name="carrier" id="carrier_dpd_pickup" value="DPD Pickup">
                 <span class="radio-custom-circle"></span>
                 <div class="radio-text">
-                    <span class="radio-main">INPOST PACZKOMAT</span>
+                    <span class="radio-main">DPD PICKUP</span>
                 </div>
             </label>
         </div>
 
-        <div id="section_inpost" class="carrier-box" style="display: none;">
-            <label class="form-label"><?php esc_html_e('Wybór Paczkomatu InPost', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
-            <input type="hidden" id="locker_id_input_inpost" name="locker_id_inpost">
+        <!-- Sekcja: Kurier DPD (Pola adresowe) -->
+        <div id="section_dpd_kurier" class="carrier-box" style="display: none; padding: 20px; background: #f9f9f9; border: 2px solid #000; border-radius: 8px;">
+            <label class="form-label" style="font-weight: 900; margin-bottom: 15px; display: block; font-size: 18px;"><?php esc_html_e('Adres dostawy', 'amnestympl'); ?></label>
             
-            <div class="carrier-actions-group">
+            <div class="form-section">
+                <input type="text" name="shipping_street" id="shipping_street" class="form-input form-input-bold" placeholder="<?php esc_attr_e('Ulica i numer domu/lokalu *', 'amnestympl'); ?>">
+            </div>
+            
+            <div class="form-section split-row">
                 <div>
-                    <button type="button" id="btn_open_inpost" class="btn-inpost">
-                        <?php esc_html_e('Otwórz mapę Paczkomatów', 'amnestympl'); ?>
-                    </button>
-                    <span id="locker_display_inpost" class="inpost-selection-status"><?php esc_html_e('Brak wybranego paczkomatu', 'amnestympl'); ?></span>
+                    <input type="text" name="shipping_postcode" id="shipping_postcode" class="form-input form-input-bold" placeholder="<?php esc_attr_e('Kod pocztowy (00-000) *', 'amnestympl'); ?>" pattern="^[0-9]{2}-[0-9]{3}$">
                 </div>
-                
-                <div id="inpost-inline-map" class="inpost-map-container" style="display: none;"></div>
+                <div>
+                    <input type="text" name="shipping_city" id="shipping_city" class="form-input form-input-bold" placeholder="<?php esc_attr_e('Miejscowość *', 'amnestympl'); ?>">
+                </div>
             </div>
         </div>
 
-        <div id="section_dpd" class="carrier-box" style="display: none;">
-            <label class="form-label"><?php esc_html_e('Wybór Punktu DPD Pickup', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
-            <p class="dpd-instruction">
+        <!-- Sekcja: DPD Pickup -->
+        <div id="section_dpd_pickup" class="carrier-box" style="display: none; padding: 20px; background: #f9f9f9; border: 2px solid #000; border-radius: 8px;">
+            <label class="form-label" style="font-weight: 900; margin-bottom: 10px; display: block; font-size: 18px;"><?php esc_html_e('Wybór Punktu DPD Pickup', 'amnestympl'); ?></label>
+            <p class="dpd-instruction" style="margin-bottom: 20px;">
                 <?php echo wp_kses_post(__('Znajdź najbliższy punkt na oficjalnej mapie DPD, a następnie skopiuj jego <strong>kod punktu</strong> (np. PL12345).', 'amnestympl')); ?>
             </p>
-            <a href="https://www.dpd.com/pl/pl/dpd-pickup/znajdz-punkt-pickup/" target="_blank" class="btn-dpd">
+            <a href="https://www.dpd.com/pl/pl/dpd-pickup/znajdz-punkt-pickup/" target="_blank" class="btn-dpd" style="display: inline-block; background-color: #dc0032; color: #fff; padding: 10px 20px; text-decoration: none; font-weight: bold; margin-bottom: 20px; border-radius: 5px;">
                 &rarr; <?php esc_html_e('Otwórz mapę DPD w nowym oknie', 'amnestympl'); ?>
             </a>
             
-            <input type="text" name="locker_id_dpd" id="locker_id_input_dpd" class="form-input form-input-bold" placeholder="<?php esc_attr_e('Wpisz kod punktu (np. PL12345)', 'amnestympl'); ?>">
+            <input type="text" name="locker_id_dpd" id="locker_id_input_dpd" class="form-input form-input-bold" placeholder="<?php esc_attr_e('Wpisz kod punktu (np. PL12345) *', 'amnestympl'); ?>">
         </div>
 
         <div class="form-section form-section-last">
@@ -268,61 +261,45 @@ function render_materials_order_form() {
 
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            const radioInPost  = document.getElementById('carrier_inpost');
-            const radioDPD     = document.getElementById('carrier_dpd');
-            const secInPost    = document.getElementById('section_inpost');
-            const secDPD       = document.getElementById('section_dpd');
-            const inputInPost  = document.getElementById('locker_id_input_inpost');
-            const inputDPD     = document.getElementById('locker_id_input_dpd');
+            const radioKurier  = document.getElementById('carrier_dpd_kurier');
+            const radioPickup  = document.getElementById('carrier_dpd_pickup');
             
-            const txtOpenMap = "<?php esc_attr_e('Otwórz mapę Paczkomatów', 'amnestympl'); ?>";
-            const txtCloseMap = "<?php esc_attr_e('Zamknij mapę', 'amnestympl'); ?>";
-            const txtSelected = "<?php esc_attr_e('Wybrano: ', 'amnestympl'); ?>";
+            const secKurier    = document.getElementById('section_dpd_kurier');
+            const secPickup    = document.getElementById('section_dpd_pickup');
+            
+            // Pola Kuriera
+            const inputStreet  = document.getElementById('shipping_street');
+            const inputZip     = document.getElementById('shipping_postcode');
+            const inputCity    = document.getElementById('shipping_city');
+            
+            // Pole Pickup
+            const inputPickup  = document.getElementById('locker_id_input_dpd');
             
             function toggleCarrier() {
-                if (radioInPost.checked) {
-                    secInPost.style.display = 'block';
-                    secDPD.style.display    = 'none';
-                    inputDPD.removeAttribute('required');
-                    inputInPost.setAttribute('required', 'required');
-                } else if (radioDPD.checked) {
-                    secInPost.style.display = 'none';
-                    secDPD.style.display    = 'block';
-                    inputInPost.removeAttribute('required');
-                    inputDPD.setAttribute('required', 'required');
+                if (radioKurier.checked) {
+                    secKurier.style.display = 'block';
+                    secPickup.style.display = 'none';
+                    
+                    inputPickup.removeAttribute('required');
+                    
+                    inputStreet.setAttribute('required', 'required');
+                    inputZip.setAttribute('required', 'required');
+                    inputCity.setAttribute('required', 'required');
+                    
+                } else if (radioPickup.checked) {
+                    secKurier.style.display = 'none';
+                    secPickup.style.display = 'block';
+                    
+                    inputStreet.removeAttribute('required');
+                    inputZip.removeAttribute('required');
+                    inputCity.removeAttribute('required');
+                    
+                    inputPickup.setAttribute('required', 'required');
                 }
             }
 
-            radioInPost.addEventListener('change', toggleCarrier);
-            radioDPD.addEventListener('change', toggleCarrier);
-
-            window.easyPackAsyncInit = function () {
-                easyPack.init({});
-            };
-
-            let inpostMapLoaded = false;
-            
-            document.getElementById('btn_open_inpost').addEventListener('click', function() {
-                const mapContainer = document.getElementById('inpost-inline-map');
-                
-                if (mapContainer.style.display === 'none') {
-                    mapContainer.style.display = 'block';
-                    this.innerText = txtCloseMap;
-                    
-                    if (!inpostMapLoaded) {
-                        easyPack.mapWidget('inpost-inline-map', function(point) {
-                            inputInPost.value = point.name;
-                            document.getElementById('locker_display_inpost').innerText = txtSelected + point.name;
-                            mapContainer.style.display = 'none';
-                            document.getElementById('btn_open_inpost').innerText = txtOpenMap;
-                        });
-                        inpostMapLoaded = true;
-                    }
-                } else {
-                    mapContainer.style.display = 'none';
-                    this.innerText = txtOpenMap;
-                }
-            });
+            radioKurier.addEventListener('change', toggleCarrier);
+            radioPickup.addEventListener('change', toggleCarrier);
         });
     </script>
     <?php
@@ -353,7 +330,13 @@ function render_material_order_meta_box($post) {
     $event_id     = get_post_meta($post->ID, 'powiazane_wydarzenie_id', true);
     $package_size = get_post_meta($post->ID, 'rozmiar_paczki', true);
     $carrier      = get_post_meta($post->ID, 'przewoznik', true);
-    $locker_id    = get_post_meta($post->ID, 'punkt_odbioru_id', true);
+    
+    // Zmienne dla DPD
+    $locker_id        = get_post_meta($post->ID, 'punkt_odbioru_id', true);
+    $address_street   = get_post_meta($post->ID, 'adres_ulica', true);
+    $address_postcode = get_post_meta($post->ID, 'adres_kod', true);
+    $address_city     = get_post_meta($post->ID, 'adres_miasto', true);
+
     $contact      = get_post_meta($post->ID, 'osoba_kontaktowa', true);
     $phone        = get_post_meta($post->ID, 'telefon', true);
     $email        = get_post_meta($post->ID, 'email', true);
@@ -393,10 +376,21 @@ function render_material_order_meta_box($post) {
             <th><?php esc_html_e('Przewoźnik:', 'amnestympl'); ?></th>
             <td><strong><?php echo esc_html($carrier); ?></strong></td>
         </tr>
-        <tr>
-            <th><?php esc_html_e('Punkt odbioru (Kod):', 'amnestympl'); ?></th>
-            <td><strong class="locker-id-value"><?php echo esc_html($locker_id); ?></strong></td>
-        </tr>
+        
+        <?php if ( $carrier === 'DPD Pickup' ) : ?>
+            <tr>
+                <th><?php esc_html_e('Punkt odbioru (Kod):', 'amnestympl'); ?></th>
+                <td><strong class="locker-id-value"><?php echo esc_html($locker_id); ?></strong></td>
+            </tr>
+        <?php elseif ( $carrier === 'Kurier DPD' ) : ?>
+            <tr>
+                <th><?php esc_html_e('Adres dostawy:', 'amnestympl'); ?></th>
+                <td>
+                    <strong><?php echo esc_html($address_street); ?></strong><br>
+                    <?php echo esc_html($address_postcode); ?> <?php echo esc_html($address_city); ?>
+                </td>
+            </tr>
+        <?php endif; ?>
     </table>
 
     <h4 style="margin-bottom: 10px; font-size: 15px;"><?php esc_html_e('Zarządzaj statusem zamówienia', 'amnestympl'); ?></h4>
@@ -493,10 +487,16 @@ function enqueue_media_uploader_scripts() {
 }
 
 function register_global_materials_settings() {
-    // Register 3 slots for files (can be easily expanded later)
-    for ( $i = 1; $i <= 3; $i++ ) {
-        register_setting('global_materials_group', 'global_mat_' . $i . '_title');
-        register_setting('global_materials_group', 'global_mat_' . $i . '_url');
+    // Register settings for 3 categories, each with a title and up to 3 files
+    for ( $c = 1; $c <= 3; $c++ ) {
+        // Register category title
+        register_setting('global_materials_group', 'global_mat_cat_' . $c . '_title');
+        
+        // Register up to 3 files per category
+        for ( $f = 1; $f <= 3; $f++ ) {
+            register_setting('global_materials_group', 'global_mat_cat_' . $c . '_file_' . $f . '_title');
+            register_setting('global_materials_group', 'global_mat_cat_' . $c . '_file_' . $f . '_url');
+        }
     }
 }
 
@@ -508,32 +508,56 @@ function render_global_materials_page() {
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Globalne Materiały do Pobrania', 'amnestympl'); ?></h1>
-        <p><?php esc_html_e('Wgraj pliki (np. plakaty, petycje), które będą automatycznie dostępne dla wszystkich organizatorów w ich panelach.', 'amnestympl'); ?></p>
+        <p><?php esc_html_e('Uporządkuj pliki w trzech kategoriach. Zostaną one wyświetlone w osobnych ramkach w panelu użytkownika.', 'amnestympl'); ?></p>
         
         <form method="post" action="options.php">
             <?php settings_fields('global_materials_group'); ?>
             
-            <table class="form-table admin-materials-table">
-                <?php for ( $i = 1; $i <= 3; $i++ ) : 
-                    $title = get_option('global_mat_' . $i . '_title');
-                    $url   = get_option('global_mat_' . $i . '_url');
-                ?>
-                <tr valign="top" style="border-bottom: 1px solid #ddd;">
-                    <th scope="row" class="material-row-th"><?php printf(esc_html__('Plik #%d', 'amnestympl'), $i); ?></th>
-                    <td class="material-row-td">
-                        <label class="material-field-label"><strong><?php esc_html_e('Nazwa wyświetlana (np. Plakat PDF):', 'amnestympl'); ?></strong></label>
-                        <input type="text" name="global_mat_<?php echo $i; ?>_title" value="<?php echo esc_attr($title); ?>" class="regular-text" style="margin-bottom: 15px;" />
-                        
-                        <label class="material-field-label"><strong><?php esc_html_e('Plik:', 'amnestympl'); ?></strong></label>
-                        <div class="material-input-group">
-                            <input type="text" id="mat_url_<?php echo $i; ?>" name="global_mat_<?php echo $i; ?>_url" value="<?php echo esc_attr($url); ?>" class="large-text" />
-                            <button type="button" class="button upload-media-btn" data-target="mat_url_<?php echo $i; ?>"><?php esc_html_e('Wybierz z biblioteki', 'amnestympl'); ?></button>
-                            <button type="button" class="button btn-remove-media clear-media-btn" data-target="mat_url_<?php echo $i; ?>"><?php esc_html_e('Usuń', 'amnestympl'); ?></button>
-                        </div>
-                    </td>
-                </tr>
-                <?php endfor; ?>
-            </table>
+            <?php 
+            // Loop through the 3 distinct categories
+            for ( $c = 1; $c <= 3; $c++ ) : 
+                $cat_title = get_option('global_mat_cat_' . $c . '_title');
+            ?>
+                <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; margin-bottom: 30px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+                    <h2 style="margin-top: 0; border-bottom: 2px solid #dc0032; padding-bottom: 10px;">
+                        <?php esc_html_e('Kategoria', 'amnestympl'); ?> <?php echo (int)$c; ?>
+                    </h2>
+                    
+                    <table class="form-table admin-materials-table">
+                        <tr valign="top">
+                            <th scope="row"><label for="cat_title_<?php echo (int)$c; ?>"><strong><?php esc_html_e('Nazwa Kategorii:', 'amnestympl'); ?></strong></label></th>
+                            <td>
+                                <input type="text" id="cat_title_<?php echo (int)$c; ?>" name="global_mat_cat_<?php echo (int)$c; ?>_title" value="<?php echo esc_attr($cat_title); ?>" class="regular-text" placeholder="<?php esc_attr_e('np. Plakaty promocyjne', 'amnestympl'); ?>" />
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="form-table admin-materials-table">
+                        <?php 
+                        // Loop through 3 files within the current category
+                        for ( $f = 1; $f <= 3; $f++ ) : 
+                            $file_title = get_option('global_mat_cat_' . $c . '_file_' . $f . '_title');
+                            $file_url   = get_option('global_mat_cat_' . $c . '_file_' . $f . '_url');
+                        ?>
+                        <tr valign="top" style="border-top: 1px solid #eee;">
+                            <th scope="row" class="material-row-th"><?php printf(esc_html__('Plik #%d', 'amnestympl'), $f); ?></th>
+                            <td class="material-row-td">
+                                <label class="material-field-label"><strong><?php esc_html_e('Nazwa wyświetlana:', 'amnestympl'); ?></strong></label>
+                                <input type="text" name="global_mat_cat_<?php echo (int)$c; ?>_file_<?php echo (int)$f; ?>_title" value="<?php echo esc_attr($file_title); ?>" class="regular-text" style="margin-bottom: 15px;" />
+                                
+                                <br>
+                                <label class="material-field-label"><strong><?php esc_html_e('Plik:', 'amnestympl'); ?></strong></label>
+                                <div class="material-input-group">
+                                    <input type="text" id="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>" name="global_mat_cat_<?php echo (int)$c; ?>_file_<?php echo (int)$f; ?>_url" value="<?php echo esc_attr($file_url); ?>" class="large-text" />
+                                    <button type="button" class="button upload-media-btn" data-target="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>"><?php esc_html_e('Wybierz z biblioteki', 'amnestympl'); ?></button>
+                                    <button type="button" class="button btn-remove-media clear-media-btn" data-target="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>"><?php esc_html_e('Usuń', 'amnestympl'); ?></button>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php endfor; ?>
+                    </table>
+                </div>
+            <?php endfor; ?>
 
             <?php submit_button(__('Zapisz Materiały', 'amnestympl')); ?>
         </form>
@@ -541,30 +565,40 @@ function render_global_materials_page() {
 
     <script>
     jQuery(document).ready(function($){
-        var customUploader;
-        
-        // Setup localized strings for media uploader title and button
-        var txtUploaderTitle = "<?php esc_attr_e('Wybierz lub wgraj plik', 'amnestympl'); ?>";
-        var txtUploaderBtn = "<?php esc_attr_e('Użyj tego pliku', 'amnestympl'); ?>";
+        var fileFrame;
         
         $('.upload-media-btn').click(function(e) {
             e.preventDefault();
+            
+            // Store the target input based on the clicked button
             var targetInput = $('#' + $(this).data('target'));
             
-            if (customUploader) { customUploader.open(); return; }
+            // If the media frame already exists, update active input and reopen it
+            if ( fileFrame ) { 
+                fileFrame.activeInput = targetInput;
+                fileFrame.open(); 
+                return; 
+            }
             
-            customUploader = wp.media.frames.file_frame = wp.media({
-                title: txtUploaderTitle,
-                button: { text: txtUploaderBtn },
+            // Create a new media frame
+            fileFrame = wp.media({
+                title: "<?php esc_attr_e('Wybierz lub wgraj plik', 'amnestympl'); ?>",
+                button: { text: "<?php esc_attr_e('Użyj tego pliku', 'amnestympl'); ?>" },
                 multiple: false
             });
             
-            customUploader.on('select', function() {
-                var attachment = customUploader.state().get('selection').first().toJSON();
-                targetInput.val(attachment.url);
+            fileFrame.activeInput = targetInput;
+
+            // When an image is selected, run a callback
+            fileFrame.on('select', function() {
+                var attachment = fileFrame.state().get('selection').first().toJSON();
+                // Safely assign the URL to the currently active input
+                if (fileFrame.activeInput) {
+                    fileFrame.activeInput.val(attachment.url);
+                }
             });
             
-            customUploader.open();
+            fileFrame.open();
         });
 
         $('.clear-media-btn').click(function(e) {
@@ -574,4 +608,71 @@ function render_global_materials_page() {
     });
     </script>
     <?php
+}
+
+add_shortcode('digital_materials', 'render_digital_materials_shortcode');
+
+function render_digital_materials_shortcode() {
+    // Check if user is logged in
+    if ( ! is_user_logged_in() ) {
+        return ''; 
+    }
+
+    ob_start();
+
+    // Loop through the 3 categories to build the structured data
+    $categories_data = array();
+    
+    for ( $c = 1; $c <= 3; $c++ ) {
+        $cat_title = get_option('global_mat_cat_' . $c . '_title');
+        $files = array();
+        
+        for ( $f = 1; $f <= 3; $f++ ) {
+            $file_title = get_option('global_mat_cat_' . $c . '_file_' . $f . '_title');
+            $file_url   = get_option('global_mat_cat_' . $c . '_file_' . $f . '_url');
+            
+            // Only add the file if a URL exists
+            if ( ! empty($file_url) ) {
+                $files[] = array(
+                    'title' => $file_title ? $file_title : __('Pobierz plik', 'amnestympl'),
+                    'url'   => $file_url
+                );
+            }
+        }
+        
+        // Only register the category if it has at least one file
+        if ( ! empty($files) ) {
+            $categories_data[] = array(
+                'title' => $cat_title ? $cat_title : sprintf(__('Kategoria %d', 'amnestympl'), $c),
+                'files' => $files
+            );
+        }
+    }
+
+    // Render the containers if there is any data
+    if ( ! empty($categories_data) ) {
+        echo '<div class="digital-materials-wrapper">';
+        
+        foreach ( $categories_data as $category ) {
+            ?>
+            <div class="digital-materials-category-frame">
+                <h3 class="uppercase-title digital-materials-category-title">
+                    <?php echo esc_html($category['title']); ?>
+                </h3>
+                <div class="digital-materials-grid">
+                    <?php foreach ( $category['files'] as $mat ) : ?>
+                        <a href="<?php echo esc_url($mat['url']); ?>" target="_blank" class="btn-digital-download">
+                            <span class="download-text"><?php echo esc_html($mat['title']); ?></span>
+                            <span class="download-icon"></span>
+                        </a>
+                    <?php endforeach; ?>
+                </div>
+            </div>
+            <?php
+        }
+        
+        echo '</div>';
+    }
+
+    return ob_get_clean();
 }

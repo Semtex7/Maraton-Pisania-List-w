@@ -32,6 +32,11 @@
     margin-top: $spacing-large;
 }
 
+// Space above the submit button (add-event form, materials order form)
+.form-section-last {
+    margin-top: 32px;
+}
+
 .ajax-form-wrapper {
     display: none;
     padding-top: $spacing-xlarge;

@@ -1,0 +1,24 @@
+// Elementor Nested Tabs (e.g. organizer panel /panel/)
+// Tab panels can have different widths set in Elementor (e.g. 83.333% without flex-grow),
+// so the widget resized to the active panel and the tab list jumped horizontally on switch.
+// The widget and every panel always take the full available width.
+
+body .elementor-widget-n-tabs {
+    width: 100%;
+    max-width: 100%;
+
+    > .e-n-tabs {
+        width: 100%;
+
+        > .e-n-tabs-content {
+            flex: 1 1 auto;
+            min-width: 0;
+
+            > .e-con {
+                --width: 100%;
+                --flex-grow: 1;
+                width: 100%;
+            }
+        }
+    }
+}

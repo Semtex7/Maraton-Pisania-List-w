@@ -99,6 +99,11 @@ function handle_user_login() {
     $user = wp_signon( $credentials, is_ssl() );
 
     if ( is_wp_error( $user ) ) {
+        if ( 'maraton_locked' === $user->get_error_code() ) {
+            $login_error = $user->get_error_message();
+            return;
+        }
+
         if ( 'maraton_pending' === $user->get_error_code() ) {
             // Correct password but account not activated: send a fresh activation link
             $pending = $user->get_error_data();
@@ -133,6 +138,16 @@ function handle_user_registration() {
         // Security check
         if ( ! isset($_POST['registration_nonce']) || ! wp_verify_nonce($_POST['registration_nonce'], 'register_action') ) {
             $registration_error = 'Błąd bezpieczeństwa formularza. Odśwież stronę i spróbuj ponownie.';
+            return;
+        }
+
+        // Bot protection (functions/form-protection.php); bots see the normal success screen
+        $protection = maraton_check_registration_submission();
+        if ( 'bot' === $protection ) {
+            wp_safe_redirect( add_query_arg('registered', '1', get_permalink( get_queried_object_id() )) );
+            exit;
+        } elseif ( '' !== $protection ) {
+            $registration_error = $protection;
             return;
         }
 
@@ -226,8 +241,8 @@ function maraton_send_activation_email( $user_id, $page_url ) {
     $message .= "Aby aktywować konto, kliknij w link:\n\n";
     $message .= $link . "\n\n";
     $message .= "Po aktywacji zaloguj się, aby dodać swoje wydarzenie i zamówić materiały.\n";
-    $message .= "Jeśli to nie Ty zakładałeś konto, zignoruj tę wiadomość.\n\n";
-    $message .= "Pozdrawiamy,\nZespół Amnesty";
+    $message .= "Jeśli konto nie zostało założone przez Ciebie, zignoruj tę wiadomość.\n\n";
+    $message .= "Pozdrawiamy,\nZespół Amnesty International";
 
     return wp_mail($user->user_email, $subject, $message);
 }
@@ -309,6 +324,7 @@ function render_registration_shortcode() {
 
     <form method="post" action="" class="new-event-form">
         <?php wp_nonce_field('register_action', 'registration_nonce'); ?>
+        <?php maraton_form_protection_fields(); ?>
 
         <p class="login-email">
             <label for="reg_user_email">Adres e-mail <span style="color:red;">*</span></label>
@@ -444,4 +460,49 @@ function dynamic_menu_items( $items, $args ) {
     }
     
     return $new_items;
+}
+
+// ====================================================================
+// GDPR: organizer consents in Tools → Export Personal Data
+// (account data itself is exported by WordPress core)
+// ====================================================================
+
+add_filter( 'wp_privacy_personal_data_exporters', 'maraton_register_consent_exporter' );
+
+function maraton_register_consent_exporter( $exporters ) {
+    $exporters['maraton-organizer-consents'] = array(
+        'exporter_friendly_name' => 'Zgody organizatora Maratonu',
+        'callback'               => 'maraton_export_organizer_consents',
+    );
+    return $exporters;
+}
+
+function maraton_export_organizer_consents( $email, $page = 1 ) {
+    $user = get_user_by( 'email', $email );
+    if ( ! $user ) {
+        return array( 'data' => array(), 'done' => true );
+    }
+
+    $data = array();
+    foreach ( array(
+        'consent_marathon' => 'Zgoda na przetwarzanie danych (organizacja Maratonu)',
+        'consent_amnesty'  => 'Zgoda na informacje o akcjach Amnesty International',
+    ) as $key => $label ) {
+        $value = get_user_meta( $user->ID, $key, true );
+        if ( '' === $value ) {
+            continue;
+        }
+        $date   = get_user_meta( $user->ID, $key . '_date', true );
+        $data[] = array( 'name' => $label, 'value' => ( $value ? 'tak' : 'nie' ) . ( $date ? ' (' . $date . ')' : '' ) );
+    }
+
+    return array(
+        'data' => $data ? array( array(
+            'group_id'    => 'maraton-consents',
+            'group_label' => 'Zgody organizatora Maratonu',
+            'item_id'     => 'maraton-consents-' . $user->ID,
+            'data'        => $data,
+        ) ) : array(),
+        'done' => true,
+    );
 }

@@ -79,6 +79,21 @@
 	width: 100%;
 }
 
+.event-auth-panel .login-lost-password {
+	margin: 20px 0 0;
+	text-align: center;
+}
+
+.event-login-notice,
+.register-success {
+	padding: 14px 16px;
+	margin: 0 0 18px;
+	border: 1px solid #9fd3a8;
+	border-radius: 4px;
+	background: #effaf1;
+	color: #1d5e2a;
+}
+
 .event-login-error,
 .register-error {
 	padding: 14px 16px;

@@ -1,0 +1,1008 @@
+<?php
+
+namespace FluentMail\App\Http\Controllers;
+
+use Exception;
+use FluentMail\App\Models\Settings;
+use FluentMail\App\Services\Notification\Manager as NotificationManager;
+use FluentMail\Includes\Request\Request;
+use FluentMail\Includes\Support\Arr;
+use FluentMail\Includes\Support\ValidationException;
+use FluentMail\App\Services\Mailer\Providers\Factory;
+use FluentMail\App\Services\ConnectionHealth;
+use FluentMail\App\Services\Converter;
+use FluentMail\App\Services\SecretMasker;
+
+class SettingsController extends Controller
+{
+    public function index(Settings $settings)
+    {
+        $this->verify();
+
+        try {
+            $setting = $settings->get();
+
+            /*
+             * The stored report, not a fresh one. getReport() reads the option the
+             * scheduled check writes; probing every connection here would put an OAuth
+             * token renewal on the critical path of opening the Connections screen.
+             * A row whose key is absent from it has simply not been checked yet, which
+             * the screen shows as unknown rather than as healthy.
+             */
+            return $this->sendSuccess([
+                'settings' => SecretMasker::mask($setting),
+                'health'   => (new ConnectionHealth())->getReport()
+            ]);
+        } catch (Exception $e) {
+            return $this->sendError([
+                'message' => $e->getMessage()
+            ], $e->getCode());
+        }
+    }
+
+    public function validate(Request $request, Settings $settings, Factory $factory)
+    {
+        $this->verify();
+
+        try {
+            $data = $request->except(['action', 'nonce']);
+
+            $provider = $factory->make($data['provider']['key']);
+
+            $provider->validateBasicInformation($data);
+
+            $this->sendSuccess();
+        } catch (ValidationException $e) {
+            $this->sendError($e->errors(), $e->getCode());
+        }
+    }
+
+    public function store(Request $request, Settings $settings, Factory $factory)
+    {
+        $this->verify();
+
+        $passWordKeys = ['password', 'access_key', 'secret_key', 'api_key', 'client_id', 'client_secret', 'auth_token', 'access_token', 'refresh_token'];
+
+        try {
+            $data = $request->except(['action', 'nonce']);
+
+            $data = wp_unslash($data);
+
+            /*
+             * The credentials come back masked unless the admin typed over them, so
+             * the stored ones are put back here - before validateConnection() and
+             * checkConnection() below, which both have to test the real key rather
+             * than the sentinel standing in for it.
+             *
+             * An empty value is not a mask and is not restored: clearing a field is
+             * how the admin removes a credential, and how the provider forms hand
+             * the key over to wp-config when `key_store` is switched.
+             *
+             * A connection being added has nothing stored. Its one legitimate source
+             * of a mask is the dashboard's offer to import another SMTP plugin's
+             * settings, which arrive masked too; those resolve from the Converter.
+             */
+            $data['connection'] = SecretMasker::resolve(
+                $data['connection'],
+                $this->getStoredConnection(
+                    Arr::get($data, 'connection_key'),
+                    Arr::get($data, 'connection.provider')
+                ) ?: $this->getSuggestedConnection(Arr::get($data, 'connection.provider'))
+            );
+
+            $provider = $factory->make($data['connection']['provider']);
+
+            $connection = $data['connection'];
+
+            foreach ($connection as $index => $value) {
+                if ($index == 'sender_email') {
+                    $connection['sender_email'] = sanitize_email($connection['sender_email']);
+                }
+
+                if (in_array($index, $passWordKeys)) {
+                    if ($value) {
+                        $connection[$index] = trim($value);
+                    }
+                    continue;
+                }
+
+                if (is_string($value) && $value) {
+                    $connection[$index] = sanitize_text_field($value);
+
+                    // Store the name the admin typed. A sender name copied from
+                    // the site title arrives HTML-escaped, and it is plain text
+                    // everywhere it is used. fluentMailGetSettings() decodes on
+                    // read as well, so installs that already hold an escaped
+                    // name are fixed whether or not they ever save again.
+                    if ($index === 'sender_name') {
+                        $connection[$index] = wp_specialchars_decode($connection[$index], ENT_QUOTES);
+                    }
+                }
+            }
+
+            $data['connection'] = $connection;
+
+            $this->validateConnection($provider, $connection);
+
+            $provider->checkConnection($connection);
+
+            $data['valid_senders'] = $provider->getValidSenders($connection);
+
+            $data = apply_filters('fluentmail_saving_connection_data', $data, $data['connection']['provider']);
+
+            $settings->store($data);
+
+            return $this->sendSuccess([
+                'message'     => __('Settings saved.', 'fluent-smtp'),
+                'connections' => SecretMasker::maskConnections($settings->getConnections()),
+                'mappings'    => $settings->getMappings(),
+                'misc'        => $settings->getMisc()
+            ]);
+        } catch (ValidationException $e) {
+            return $this->sendError($e->errors(), 422);
+        } catch (Exception $e) {
+            return $this->sendError([
+                'message' => $e->getMessage()
+            ], 422);
+        }
+    }
+
+    /**
+     * The credentials currently saved under a connection key, decrypted.
+     *
+     * The source the masked fields of an incoming payload are restored from. An
+     * unknown or absent key - a connection being added rather than edited - gives an
+     * empty array, which SecretMasker::resolve() turns into empty fields
+     * rather than into the sentinel.
+     *
+     * '0' is the connection form's own way of saying "new", so it is not a key.
+     *
+     * @param string|null $connectionKey
+     * @return array
+     */
+    protected function getStoredConnection($connectionKey, $provider = null)
+    {
+        if (!$connectionKey || $connectionKey === '0') {
+            return [];
+        }
+
+        $connections = (new Settings())->getConnections();
+
+        $stored = Arr::get($connections, $connectionKey . '.provider_settings', []);
+
+        /*
+         * A connection switched to a different provider is a new set of credentials,
+         * not the old ones under a new name. Without this, editing a Gmail connection
+         * onto Outlook restored Google's tokens into it: the form still said
+         * "authenticated", the Outlook validator saw an access token and skipped its
+         * own authorization, and an unusable connection was saved over a working one.
+         */
+        if ($provider && Arr::get($stored, 'provider') !== $provider) {
+            return [];
+        }
+
+        return $stored;
+    }
+
+    /**
+     * The import suggestion's settings for a provider, while there is nothing to
+     * import into yet.
+     *
+     * Only offered on the dashboard when no connection exists, so it is only a
+     * resolve source under the same condition - once a connection exists, a mask
+     * without a stored value behind it is an error, not an import.
+     *
+     * @param string|null $provider
+     * @return array
+     */
+    protected function getSuggestedConnection($provider)
+    {
+        if (!empty((new Settings())->getConnections())) {
+            return [];
+        }
+
+        return (new Converter())->suggestedSettingsFor($provider);
+    }
+
+    public function storeMiscSettings(Request $request, Settings $settings)
+    {
+        $this->verify();
+
+        $misc = $request->get('settings');
+        $settings->updateMiscSettings($misc);
+        $this->sendSuccess([
+            'message' => __('General settings saved.', 'fluent-smtp')
+        ]);
+    }
+
+    public function delete(Request $request, Settings $settings)
+    {
+        $this->verify();
+
+        $settings = $settings->delete($request->get('key'));
+
+        /*
+         * The same contract as every other response carrying connections: the screen
+         * installs these straight into its shared state, so the ones that remain
+         * have to arrive masked, with `has_access_token` derived, exactly as the
+         * initial page load handed them over.
+         */
+        return $this->sendSuccess(SecretMasker::mask($settings));
+    }
+
+    public function sendTestEmail(Request $request, Settings $settings)
+    {
+        $this->verify();
+
+        try {
+            $this->app->addAction('wp_mail_failed', [$this, 'onFail']);
+
+            $data = $request->except(['action', 'nonce']);
+
+            if (!isset($data['email'])) {
+                return $this->sendError([
+                    'email_error' => __('The email field is required.', 'fluent-smtp')
+                ], 422);
+            }
+
+            if (!defined('FLUENTMAIL_EMAIL_TESTING')) {
+                define('FLUENTMAIL_EMAIL_TESTING', true);
+            }
+
+            $startedAt = microtime(true);
+
+            $settings->sendTestEmail($data, $settings->get());
+
+            /*
+             * The handover to the provider is synchronous, so this covers the whole
+             * round trip: connection/handshake, the API call or SMTP conversation and
+             * the provider's response. It is not the time until the mail lands in the
+             * inbox - that part is out of our hands.
+             */
+            $timeTaken = microtime(true) - $startedAt;
+
+            return $this->sendSuccess([
+                'message'          => __('Email delivered successfully.', 'fluent-smtp'),
+                'time_taken'       => round($timeTaken, 3),
+                'time_taken_human' => $this->formatDuration($timeTaken),
+                'throughput'       => $this->throughputFromDuration($timeTaken)
+            ]);
+        } catch (\Throwable $e) {
+            /*
+             * Throwable, not Exception. A missing PHP extension, a type error or
+             * any other engine-level failure raised while sending is an \Error,
+             * which catch(Exception) lets through — the AJAX request then died
+             * with no JSON body and the UI span forever with no message shown.
+             *
+             * getCode() is meaningless on an \Error (almost always 0) and an HTTP
+             * status of 0 is not valid, so only a sane positive code is honoured.
+             */
+            $code = (int)$e->getCode();
+            if ($code < 400 || $code > 599) {
+                $code = 422;
+            }
+
+            return $this->sendError([
+                'message' => $e->getMessage()
+            ], $code);
+        }
+    }
+
+    protected function formatDuration($seconds)
+    {
+        if ($seconds < 1) {
+            return sprintf(
+                __('Delivered in %s milliseconds', 'fluent-smtp'),
+                number_format_i18n($seconds * 1000)
+            );
+        }
+
+        return sprintf(
+            __('Delivered in %s seconds', 'fluent-smtp'),
+            number_format_i18n($seconds, 2)
+        );
+    }
+
+    /**
+     * The sending-speed ceiling one round trip implies.
+     *
+     * A campaign sender (FluentCRM is the usual one) hands emails to the provider
+     * one after another from a single PHP process, so it can never send faster than
+     * 1 / round-trip. Showing that number next to the test result lets a user see
+     * whether a "slow" campaign is actually running at the pace their server's
+     * connection to the provider allows, or well below it - in which case the
+     * bottleneck is somewhere else (cron, the sending engine, a rate limit).
+     *
+     * The figures are a ceiling, not a forecast: they ignore provider rate limits
+     * and the time the sender spends building each email.
+     *
+     * @param float $seconds Round trip of the test send.
+     * @return array{per_second: string, per_minute: string, per_hour: string}
+     */
+    protected function throughputFromDuration($seconds)
+    {
+        // A clock that reads zero (or negative, after an NTP step) would divide by
+        // zero; nothing hands an email over in under a millisecond anyway.
+        $seconds = max((float)$seconds, 0.001);
+
+        $perSecond = 1 / $seconds;
+
+        return [
+            // Below ten a second the first decimal is the whole story ("0.8" vs
+            // "1"); above it the decimal is noise.
+            'per_second' => number_format_i18n($perSecond, $perSecond < 10 ? 1 : 0),
+            'per_minute' => number_format_i18n(floor($perSecond * 60)),
+            'per_hour'   => number_format_i18n(floor($perSecond * 3600)),
+        ];
+    }
+
+    public function onFail($response)
+    {
+        return $this->sendError([
+            'message' => $response->get_error_message(),
+            'errors'  => $response->get_error_data()
+        ], 422);
+    }
+
+    public function validateConnection($provider, $connection)
+    {
+        $errors = [];
+
+        try {
+            $provider->validateBasicInformation($connection);
+        } catch (ValidationException $e) {
+            $errors = $e->errors();
+        }
+
+        try {
+            $provider->validateProviderInformation($connection);
+        } catch (ValidationException $e) {
+            $errors = array_merge($errors, $e->errors());
+        }
+
+        if ($errors) {
+            throw new ValidationException(esc_html__('Unprocessable Entity', 'fluent-smtp'), 422, null, $errors); // phpcs:ignore WordPress.Security.EscapeOutput.ExceptionNotEscaped
+        }
+    }
+
+    public function getConnectionInfo(Request $request, Settings $settings, Factory $factory)
+    {
+        $this->verify();
+
+        $connectionId = $request->get('connection_id');
+        $connections = $settings->getConnections();
+
+        if (!isset($connections[$connectionId]['provider_settings'])) {
+            return $this->sendSuccess([
+                'info' => __('No connection found. Please reload the page and try again.', 'fluent-smtp')
+            ]);
+        }
+
+        $connection = $connections[$connectionId]['provider_settings'];
+
+        $provider = $factory->make($connection['provider']);
+
+        return $this->sendSuccess($provider->getConnectionInfo($connection));
+    }
+
+    public function addNewSenderEmail(Request $request, Settings $settings, Factory $factory)
+    {
+        $this->verify();
+
+        $connectionId = $request->get('connection_id');
+        $connections = $settings->getConnections();
+
+        if (!isset($connections[$connectionId]['provider_settings'])) {
+            return $this->sendSuccess([
+                'info' => __('No connection found. Please reload the page and try again.', 'fluent-smtp')
+            ]);
+        }
+
+        $connection = $connections[$connectionId]['provider_settings'];
+
+        $provider = $factory->make($connection['provider']);
+        $email = sanitize_email($request->get('new_sender'));
+
+        if (!is_email($email)) {
+            return $this->sendError([
+                'message' => __('Please provide a valid email address.', 'fluent-smtp')
+            ]);
+        }
+
+        $result = $provider->addNewSenderEmail($connection, $email);
+
+        if (is_wp_error($result)) {
+            return $this->sendError([
+                'message' => $result->get_error_message()
+            ]);
+        }
+
+        return $this->sendSuccess([
+            'message' => __('Email address added.', 'fluent-smtp')
+        ]);
+    }
+
+    public function removeSenderEmail(Request $request, Settings $settings, Factory $factory)
+    {
+        $this->verify();
+
+        $connectionId = $request->get('connection_id');
+        $connections = $settings->getConnections();
+
+        if (!isset($connections[$connectionId]['provider_settings'])) {
+            return $this->sendSuccess([
+                'info' => __('No connection found. Please reload the page and try again.', 'fluent-smtp')
+            ]);
+        }
+
+        $connection = $connections[$connectionId]['provider_settings'];
+
+        $provider = $factory->make($connection['provider']);
+        $email = sanitize_email($request->get('email'));
+
+        if (!is_email($email)) {
+            return $this->sendError([
+                'message' => __('Please provide a valid email address.', 'fluent-smtp')
+            ]);
+        }
+
+        $result = $provider->removeSenderEmail($connection, $email);
+
+        if (is_wp_error($result)) {
+            return $this->sendError([
+                'message' => $result->get_error_message()
+            ]);
+        }
+
+        return $this->sendSuccess([
+            'message' => __('Email address removed.', 'fluent-smtp')
+        ]);
+    }
+
+    public function installPlugin(Request $request)
+    {
+        $this->verify();
+
+        // Sanitize plugin slug input
+        $pluginSlug = sanitize_key($request->get('plugin_slug'));
+
+        // Define whitelist of allowed plugins
+        $allowedPlugins = ['fluentform', 'fluent-crm', 'ninja-tables'];
+
+        // Validate plugin slug against whitelist with strict comparison
+        if (!in_array($pluginSlug, $allowedPlugins, true)) {
+            return $this->sendError([
+                'message' => __('Invalid plugin specified. Only approved plugins can be installed.', 'fluent-smtp')
+            ]);
+        }
+
+        // Verify user has permission to install plugins
+        if (!current_user_can('install_plugins')) {
+            return $this->sendError([
+                'message' => __('Sorry, you do not have permission to install plugins.', 'fluent-smtp')
+            ]);
+        }
+
+        // Verify file modifications are allowed
+        if (!wp_is_file_mod_allowed('install_plugins')) {
+            return $this->sendError([
+                'message' => __('Plugin installation is disabled on this site.', 'fluent-smtp')
+            ]);
+        }
+
+        $plugin = [
+            'name'      => $pluginSlug,
+            'repo-slug' => $pluginSlug,
+            'file'      => $pluginSlug . '.php'
+        ];
+
+        $UrlMaps = [
+            'fluentform'   => [
+                'admin_url' => admin_url('admin.php?page=fluent_forms'),
+                'title'     => __('Go to Fluent Forms Dashboard', 'fluent-smtp')
+            ],
+            'fluent-crm'   => [
+                'admin_url' => admin_url('admin.php?page=fluentcrm-admin'),
+                'title'     => __('Go to FluentCRM Dashboard', 'fluent-smtp')
+            ],
+            'ninja-tables' => [
+                'admin_url' => admin_url('admin.php?page=ninja_tables#/'),
+                'title'     => __('Go to Ninja Tables Dashboard', 'fluent-smtp')
+            ]
+        ];
+
+        try {
+            $this->backgroundInstaller($plugin);
+            return $this->send([
+                'message' => __('Plugin has been successfully installed.', 'fluent-smtp'),
+                'info'    => $UrlMaps[$pluginSlug]
+            ]);
+        } catch (\Exception $exception) {
+            return $this->sendError([
+                'message' => $exception->getMessage()
+            ]);
+        }
+    }
+
+    private function backgroundInstaller($plugin_to_install)
+    {
+        if (!empty($plugin_to_install['repo-slug'])) {
+            require_once ABSPATH . 'wp-admin/includes/file.php';
+            require_once ABSPATH . 'wp-admin/includes/plugin-install.php';
+            require_once ABSPATH . 'wp-admin/includes/class-wp-upgrader.php';
+            require_once ABSPATH . 'wp-admin/includes/plugin.php';
+
+            WP_Filesystem();
+
+            $skin = new \Automatic_Upgrader_Skin();
+            $upgrader = new \WP_Upgrader($skin);
+            $installed_plugins = array_keys(\get_plugins());
+            $plugin_slug = $plugin_to_install['repo-slug'];
+            $plugin_file = isset($plugin_to_install['file']) ? $plugin_to_install['file'] : $plugin_slug . '.php';
+            $installed = false;
+            $activate = false;
+
+            // See if the plugin is installed already.
+            if (isset($installed_plugins[$plugin_file])) {
+                $installed = true;
+                $activate = !is_plugin_active($installed_plugins[$plugin_file]);
+            }
+
+            // Install this thing!
+            if (!$installed) {
+                // Suppress feedback.
+                ob_start();
+
+                try {
+                    $plugin_information = plugins_api(
+                        'plugin_information',
+                        array(
+                            'slug'   => $plugin_slug,
+                            'fields' => array(
+                                'short_description' => false,
+                                'sections'          => false,
+                                'requires'          => false,
+                                'rating'            => false,
+                                'ratings'           => false,
+                                'downloaded'        => false,
+                                'last_updated'      => false,
+                                'added'             => false,
+                                'tags'              => false,
+                                'homepage'          => false,
+                                'donate_link'       => false,
+                                'author_profile'    => false,
+                                'author'            => false,
+                            ),
+                        )
+                    );
+
+                    if (is_wp_error($plugin_information)) {
+                        throw new \Exception(wp_kses_post($plugin_information->get_error_message()));
+                    }
+
+                    $package = $plugin_information->download_link;
+                    $download = $upgrader->download_package($package);
+
+                    if (is_wp_error($download)) {
+                        throw new \Exception(wp_kses_post($download->get_error_message()));
+                    }
+
+                    $working_dir = $upgrader->unpack_package($download, true);
+
+                    if (is_wp_error($working_dir)) {
+                        throw new \Exception(wp_kses_post($working_dir->get_error_message()));
+                    }
+
+                    $result = $upgrader->install_package(
+                        array(
+                            'source'                      => $working_dir,
+                            'destination'                 => WP_PLUGIN_DIR,
+                            'clear_destination'           => false,
+                            'abort_if_destination_exists' => false,
+                            'clear_working'               => true,
+                            'hook_extra'                  => array(
+                                'type'   => 'plugin',
+                                'action' => 'install',
+                            ),
+                        )
+                    );
+
+                    if (is_wp_error($result)) {
+                        throw new \Exception(wp_kses_post($result->get_error_message()));
+                    }
+
+                    $activate = true;
+                } catch (\Exception $e) {
+                    throw new \Exception(esc_html($e->getMessage()));
+                }
+
+                // Discard feedback.
+                ob_end_clean();
+            }
+
+            wp_clean_plugins_cache();
+
+            // Activate this thing.
+            if ($activate) {
+                try {
+                    $result = activate_plugin($installed ? $installed_plugins[$plugin_file] : $plugin_slug . '/' . $plugin_file);
+
+                    if (is_wp_error($result)) {
+                        throw new \Exception(esc_html($result->get_error_message()));
+                    }
+                } catch (\Exception $e) {
+                    throw new \Exception(esc_html($e->getMessage()));
+                }
+            }
+        }
+    }
+
+    public function subscribe()
+    {
+        $this->verify();
+
+        // Properly sanitize email input with sanitize_email() instead of sanitize_text_field()
+        $email = isset($_REQUEST['email']) ? sanitize_email($_REQUEST['email']) : '';
+
+        // Sanitize display name
+        $displayName = isset($_REQUEST['display_name']) ? sanitize_text_field($_REQUEST['display_name']) : '';
+
+        // Validate email format
+        if (!is_email($email)) {
+            return $this->sendError([
+                'message' => __('That email address is not valid.', 'fluent-smtp')
+            ], 422);
+        }
+
+        // Properly validate share_essentials with isset() check and strict comparison
+        $shareEssentials = 'no';
+        if (isset($_REQUEST['share_essentials']) && $_REQUEST['share_essentials'] === 'yes') {
+            update_option('_fluentsmtp_sub_update', 'shared', 'no');
+            $shareEssentials = 'yes';
+        } else {
+            update_option('_fluentsmtp_sub_update', 'yes', 'no');
+        }
+
+        $this->pushData($email, $shareEssentials, $displayName);
+
+        return $this->sendSuccess([
+            'message' => __('You are subscribed to release notes and monthly tips.', 'fluent-smtp')
+        ]);
+    }
+
+    public function subscribeDismiss()
+    {
+        $this->verify();
+        update_option('_fluentsmtp_dismissed_timestamp', time(), 'no');
+
+        return $this->sendSuccess([
+            'message' => 'success'
+        ]);
+    }
+
+    private function pushData($optinEmail, $shareEssentials, $displayName = '')
+    {
+        $user = get_user_by('ID', get_current_user_id());
+
+        $url = 'https://fluentsmtp.com/wp-admin/?fluentcrm=1&route=contact&hash=6012116c-90d8-42a5-a65b-3649aa34b356';
+
+
+        if (!$displayName) {
+            $displayName = trim($user->first_name . ' ' . $user->last_name);
+            if (!$displayName) {
+                $displayName = $user->display_name;
+            }
+        }
+
+        wp_remote_post($url, [
+            'body' => json_encode([ // phpcs:ignore WordPress.WP.AlternativeFunctions.json_encode_json_encode
+                'full_name'       => $displayName,
+                'email'           => $optinEmail,
+                'source'          => 'smtp',
+                'optin_website'   => site_url(),
+                'share_essential' => $shareEssentials
+            ])
+        ]);
+    }
+
+    public function getGmailAuthUrl(Request $request)
+    {
+        $this->verify();
+        $connection = wp_unslash($request->get('connection'));
+
+        /*
+         * Re-authenticating an existing connection sends back the masked secret,
+         * since that is what the form was given. Restore it before it is read below.
+         */
+        $connection = SecretMasker::resolve(
+            $connection,
+            $this->getStoredConnection(
+                $request->get('connection_key'),
+                Arr::get($connection, 'provider')
+            )
+        );
+
+        $clientId = Arr::get($connection, 'client_id');
+        $clientSecret = Arr::get($connection, 'client_secret');
+
+        if (Arr::get($connection, 'key_store') == 'wp_config') {
+            if (defined('FLUENTMAIL_GMAIL_CLIENT_ID')) {
+                $clientId = FLUENTMAIL_GMAIL_CLIENT_ID;
+            } else {
+                return $this->sendError([
+                    'client_id' => [
+                        'required' => __('Please define FLUENTMAIL_GMAIL_CLIENT_ID in your wp-config.php file', 'fluent-smtp')
+                    ]
+                ]);
+            }
+            if (defined('FLUENTMAIL_GMAIL_CLIENT_SECRET')) {
+                $clientSecret = FLUENTMAIL_GMAIL_CLIENT_SECRET;
+            } else {
+                return $this->sendError([
+                    'client_secret' => [
+                        'required' => __('Please define FLUENTMAIL_GMAIL_CLIENT_SECRET in your wp-config.php file', 'fluent-smtp')
+                    ]
+                ]);
+            }
+        }
+
+        if (!$clientId) {
+            return $this->sendError([
+                'client_id' => [
+                    'required' => __('Please provide the application client ID.', 'fluent-smtp')
+                ]
+            ]);
+        }
+
+        if (!$clientSecret) {
+            return $this->sendError([
+                'client_secret' => [
+                    'required' => __('Please provide the application client secret.', 'fluent-smtp')
+                ]
+            ]);
+        }
+
+        $authUrl = add_query_arg([
+            'response_type'          => 'code',
+            'access_type'            => 'offline',
+            'client_id'              => $clientId,
+            'redirect_uri'           => apply_filters('fluentsmtp_gapi_callback', 'https://fluentsmtp.com/gapi/'),
+            'state'                  => admin_url('options-general.php?page=fluent-mail&gapi=1'),
+            /*
+             * Send-only. The plugin's one Gmail API call is
+             * users.messages.send, which gmail.send covers, attachments
+             * included. The full https://mail.google.com/ grant this used to
+             * ask for lets a leaked refresh token read and delete the mailbox.
+             * include_granted_scopes is gone with it, so a re-authentication
+             * does not fold an old wide grant back into the new token.
+             */
+            'scope'                  => 'https://www.googleapis.com/auth/gmail.send',
+            'approval_prompt'        => 'force'
+        ], 'https://accounts.google.com/o/oauth2/auth');
+
+        return $this->sendSuccess([
+            'auth_url' => filter_var($authUrl, FILTER_SANITIZE_URL)
+        ]);
+    }
+
+    public function getOutlookAuthUrl(Request $request)
+    {
+        $this->verify();
+        $connection = wp_unslash($request->get('connection'));
+
+        /* As above - the form holds a mask, the API call needs the real secret. */
+        $connection = SecretMasker::resolve(
+            $connection,
+            $this->getStoredConnection(
+                $request->get('connection_key'),
+                Arr::get($connection, 'provider')
+            )
+        );
+
+        $clientId = Arr::get($connection, 'client_id');
+        $clientSecret = Arr::get($connection, 'client_secret');
+        $tenantId = Arr::get($connection, 'tenant_id');
+
+        /*
+         * The tenant is part of the authority the browser is about to be sent
+         * to, so it is checked here as well as on save — this endpoint is
+         * reached before the connection has been stored, and refusing a bad
+         * value is better than quietly signing in against the wrong directory.
+         */
+        if (!\FluentMail\App\Services\Mailer\Providers\Outlook\API::isValidTenant($tenantId)) {
+            return $this->sendError([
+                'tenant_id' => [
+                    'invalid' => __('Directory (tenant) ID must be the tenant GUID, a verified domain such as contoso.onmicrosoft.com, or one of common, organizations, consumers.', 'fluent-smtp')
+                ]
+            ]);
+        }
+
+        if (Arr::get($connection, 'key_store') == 'wp_config') {
+            if (defined('FLUENTMAIL_OUTLOOK_CLIENT_ID')) {
+                $clientId = FLUENTMAIL_OUTLOOK_CLIENT_ID;
+            } else {
+                return $this->sendError([
+                    'client_id' => [
+                        'required' => __('Please define FLUENTMAIL_OUTLOOK_CLIENT_ID in your wp-config.php file', 'fluent-smtp')
+                    ]
+                ]);
+            }
+            if (defined('FLUENTMAIL_OUTLOOK_CLIENT_SECRET')) {
+                $clientSecret = FLUENTMAIL_OUTLOOK_CLIENT_SECRET;
+            } else {
+                return $this->sendError([
+                    'client_secret' => [
+                        'required' => __('Please define FLUENTMAIL_OUTLOOK_CLIENT_SECRET in your wp-config.php file', 'fluent-smtp')
+                    ]
+                ]);
+            }
+        }
+
+        if (!$clientId) {
+            return $this->sendError([
+                'client_id' => [
+                    'required' => __('Please provide the application client ID.', 'fluent-smtp')
+                ]
+            ]);
+        }
+
+        if (!$clientSecret) {
+            return $this->sendError([
+                'client_secret' => [
+                    'required' => __('Please provide the application client secret.', 'fluent-smtp')
+                ]
+            ]);
+        }
+
+        return $this->sendSuccess([
+            'auth_url' => (new \FluentMail\App\Services\Mailer\Providers\Outlook\API($clientId, $clientSecret, $tenantId))->getAuthUrl()
+        ]);
+    }
+
+    /**
+     * Mask the credentials held by every alert channel in a notification settings array.
+     *
+     * @param array $settings
+     * @return array
+     */
+    protected function maskNotificationSecrets($settings)
+    {
+        foreach ((new NotificationManager())->getAllChannelKeys() as $channelKey) {
+            if (empty($settings[$channelKey]) || !is_array($settings[$channelKey])) {
+                continue;
+            }
+
+            $settings[$channelKey] = SecretMasker::maskFields(
+                $settings[$channelKey],
+                SecretMasker::NOTIFICATION_SECRET_FIELDS
+            );
+        }
+
+        return $settings;
+    }
+
+    public function getNotificationSettings()
+    {
+        $settings = (new Settings())->notificationSettings();
+        $this->verify();
+
+        $settings['telegram_notify_token'] = '';
+
+        return $this->sendSuccess([
+            'settings' => $this->maskNotificationSecrets($settings)
+        ]);
+    }
+
+    public function saveNotificationSettings(Request $request)
+    {
+        $this->verify();
+
+        $settings = $request->get('settings', []);
+
+        $settings = Arr::only($settings, ['enabled', 'notify_email', 'notify_days']);
+
+        /*
+         * A payload carrying none of these keys is a malformed request, not an
+         * instruction to clear the schedule, and it must not reach the write below.
+         *
+         * The screen used to be able to send one: `notification_settings` starts empty,
+         * and if the GET that fills it failed, the form still rendered with a working
+         * Save button over that empty object. The unconditional sanitize_text_field()
+         * calls that used to sit here then turned two missing keys into two empty
+         * strings - which wp_parse_args() treats as values, not absences - so the write
+         * disabled a working summary and blanked its recipient, and reported success.
+         * The form is now gated on a successful read as well; this is the half that
+         * does not depend on the client behaving.
+         */
+        if (!$settings) {
+            return $this->sendError([
+                'message' => __('No settings were submitted. Please reload the page and try again.', 'fluent-smtp')
+            ], 422);
+        }
+
+        /*
+         * Sanitize only what was actually sent. A key that is absent has to stay absent
+         * so that wp_parse_args() below can fall back to the stored value for it.
+         */
+        foreach (['notify_email', 'enabled'] as $key) {
+            if (isset($settings[$key])) {
+                $settings[$key] = sanitize_text_field($settings[$key]);
+            }
+        }
+
+        $defaults = [
+            'enabled'      => 'no',
+            'notify_email' => '{site_admin}',
+            'notify_days'  => ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun']
+        ];
+
+        $oldSettings = (new Settings())->notificationSettings();
+        $defaults = wp_parse_args($defaults, $oldSettings);
+
+        $settings = wp_parse_args($settings, $defaults);
+
+        update_option('_fluent_smtp_notify_settings', $settings, false);
+
+        return $this->sendSuccess([
+            'message' => __('Settings saved.', 'fluent-smtp')
+        ]);
+    }
+
+    public function getNotificationChannels()
+    {
+        $this->verify();
+
+        $notificationManager = new NotificationManager();
+        $channels = $notificationManager->getAllChannels();
+        $settings = (new Settings())->notificationSettings();
+        $activeChannel = Arr::get($settings, 'active_channel', []);
+
+        // Add status and active state to each channel
+        $channelsWithStatus = [];
+        foreach ($channels as $key => $channel) {
+            $channelSettings = Arr::get($settings, $key, []);
+            $channelsWithStatus[$key] = array_merge($channel, [
+                'status'    => Arr::get($channelSettings, 'status', 'no'),
+                'is_active' => in_array($key, $activeChannel),
+                /*
+                 * Masked, not omitted. The screen reads these to decide whether a
+                 * channel is configured - `!!settings.webhook_url` and the like - and
+                 * the mask is truthy, so a connected channel still reads as connected
+                 * without the bot token or webhook URL travelling with it.
+                 */
+                'settings'  => SecretMasker::maskFields(
+                    $channelSettings,
+                    SecretMasker::NOTIFICATION_SECRET_FIELDS
+                )
+            ]);
+        }
+
+        return $this->sendSuccess([
+            'channels'       => $channelsWithStatus,
+            'active_channel' => $activeChannel
+        ]);
+    }
+
+    public function toggleNotificationChannel(Request $request)
+    {
+        $this->verify();
+
+        $channelKeys = $request->get('channel_keys', []);
+        $channelKeys = array_map('sanitize_text_field', $channelKeys);
+        $allChannelKeys = (new NotificationManager())->getAllChannelKeys();
+        $channelKeys = array_filter($channelKeys, function ($key) use ($allChannelKeys) {
+            return in_array($key, $allChannelKeys);
+        });
+
+        $settings = (new Settings())->notificationSettings();
+
+        $settings['active_channel'] = $channelKeys;
+
+        update_option('_fluent_smtp_notify_settings', $settings, false);
+
+        return $this->sendSuccess([
+            'message'         => __('Notification channel updated.', 'fluent-smtp'),
+            'active_channels' => $channelKeys
+        ]);
+    }
+}

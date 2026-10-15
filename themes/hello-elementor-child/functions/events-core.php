@@ -32,8 +32,8 @@ add_action( 'init', 'register_events_cpt' );
 
 
 // 1a. EVENT DATES
-// The add-event form stores date and time separately (ACF fields data_rozpoczecia/data_zakonczenia
-// + godzina_*), the panel edit form stores data_czas_* (Y-m-d H:i:s). Both are written on save;
+// Dates exist in two formats: date and time separately (ACF fields data_rozpoczecia/data_zakonczenia
+// + godzina_*) and combined data_czas_* (Y-m-d H:i:s). Both forms write both (maraton_event_date_meta());
 // this helper reads whichever exists. Returns 'Y-m-d H:i:s', 'Y-m-d' (date only) or ''.
 
 function maraton_get_event_datetime( $post_id, $which = 'start' ) {
@@ -53,6 +53,29 @@ function maraton_get_event_datetime( $post_id, $which = 'start' ) {
     $time = get_post_meta( $post_id, 'godzina_' . $prefix, true );
 
     return preg_match( '/^\d{1,2}:\d{2}/', (string) $time ) ? $date . ' ' . substr( $time, 0, 5 ) . ':00' : $date;
+}
+
+// Meta fields for both date formats from the forms' datetime-local values ("Y-m-d\TH:i").
+// Returns WP_Error when the start is missing/invalid or the end is before the start.
+function maraton_event_date_meta( $start, $end ) {
+    $start_ts = strtotime( (string) $start );
+    $end_ts   = '' !== (string) $end ? strtotime( $end ) : false;
+
+    if ( ! $start_ts ) {
+        return new WP_Error( 'event_start', __( 'Podaj datę i godzinę rozpoczęcia.', 'amnestympl' ) );
+    }
+    if ( $end_ts && $end_ts < $start_ts ) {
+        return new WP_Error( 'event_end', __( 'Zakończenie nie może być wcześniejsze niż rozpoczęcie.', 'amnestympl' ) );
+    }
+
+    return array(
+        'data_czas_rozpoczecia' => date( 'Y-m-d H:i:s', $start_ts ),
+        'data_czas_zakonczenia' => $end_ts ? date( 'Y-m-d H:i:s', $end_ts ) : '',
+        'data_rozpoczecia'      => date( 'Y-m-d', $start_ts ),
+        'godzina_rozpoczecia'   => date( 'H:i', $start_ts ),
+        'data_zakonczenia'      => $end_ts ? date( 'Y-m-d', $end_ts ) : '',
+        'godzina_zakonczenia'   => $end_ts ? date( 'H:i', $end_ts ) : '',
+    );
 }
 
 

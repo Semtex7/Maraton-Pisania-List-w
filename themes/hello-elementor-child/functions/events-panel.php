@@ -47,23 +47,23 @@ function ajax_get_event_form() {
         <input type="hidden" name="action" value="save_event_form">
         
         <div class="form-section">
-            <label class="form-label"><?php esc_html_e('Nazwa organizatora', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
+            <label class="form-label"><?php esc_html_e('Nazwa organizatora / instytucji / grupy', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
             <input type="text" name="organizer_name" class="form-input" value="<?php echo esc_attr($val_org); ?>" required>
         </div>
 
         <h3 class="form-section-title"><?php esc_html_e('Data i godzina maratonu', 'amnestympl'); ?></h3>
-        <div class="form-section split-row">
+        <div class="form-section split-row event-dates">
             <div>
                 <label class="form-label"><?php esc_html_e('Rozpoczęcie', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
                 <input type="datetime-local" name="start_datetime" class="form-input" value="<?php echo esc_attr($val_start); ?>" required>
             </div>
             <div>
                 <label class="form-label"><?php esc_html_e('Zakończenie', 'amnestympl'); ?></label>
-                <input type="datetime-local" name="end_datetime" class="form-input" value="<?php echo esc_attr($val_end); ?>">
+                <input type="datetime-local" name="end_datetime" class="form-input" value="<?php echo esc_attr($val_end); ?>" min="<?php echo esc_attr($val_start); ?>">
             </div>
         </div>
         
-        <h3 class="form-section-title"><?php esc_html_e('Lokalizacja', 'amnestympl'); ?></h3>
+        <h3 class="form-section-title"><?php esc_html_e('Gdzie odbędzie się wydarzenie', 'amnestympl'); ?></h3>
         <div class="form-section checkbox-option">
             <label>
                 <input type="checkbox" name="is_public_event" value="1" <?php echo $check_public; ?>> 
@@ -83,6 +83,7 @@ function ajax_get_event_form() {
         <div class="form-section">
             <label class="form-label"><?php esc_html_e('Ulica i nr lokalu:', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
             <input type="text" name="street" class="form-input" value="<?php echo esc_attr($val_street); ?>" required>
+            <span class="field-description field-description-inline"><?php esc_html_e('Staraj się podawać samą ulicę i numer budynku.', 'amnestympl'); ?></span>
         </div>
         <div class="form-section split-row">
             <div>
@@ -102,7 +103,7 @@ function ajax_get_event_form() {
         </div>
         
         <div class="form-actions-inline">
-            <button type="submit" id="ajax-save-button" class="save-button"><?php esc_html_e('Zapisz zmiany', 'amnestympl'); ?></button>
+            <button type="submit" id="ajax-save-button" class="save-button amnesty-card-button"><?php esc_html_e('Zapisz zmiany', 'amnestympl'); ?></button>
             <span id="edit-status-message" class="status-message"></span>
         </div>
     </form>
@@ -130,24 +131,21 @@ function ajax_save_event_form() {
         wp_send_json_error( __('Brak dostępu.', 'amnestympl') );
     }
 
+    $date_fields = maraton_event_date_meta(
+        sanitize_text_field($_POST['start_datetime'] ?? ''),
+        sanitize_text_field($_POST['end_datetime'] ?? '')
+    );
+    if ( is_wp_error($date_fields) ) {
+        wp_send_json_error( $date_fields->get_error_message() );
+    }
+
     wp_update_post(array('ID' => $post_id, 'post_title' => sanitize_text_field($_POST['organizer_name'])));
-    
+
     $street = sanitize_text_field($_POST['street']);
     $city   = sanitize_text_field($_POST['city']);
-    $start  = sanitize_text_field($_POST['start_datetime']);
-    $end    = sanitize_text_field($_POST['end_datetime']);
-
-    $start_ts = strtotime($start);
-    $end_ts   = ! empty($end) ? strtotime($end) : false;
 
     // Dates are stored in both formats used by the theme (see maraton_get_event_datetime())
-    $fields_to_save = array(
-        'data_czas_rozpoczecia' => date('Y-m-d H:i:s', $start_ts),
-        'data_czas_zakonczenia' => $end_ts ? date('Y-m-d H:i:s', $end_ts) : '',
-        'data_rozpoczecia'      => date('Y-m-d', $start_ts),
-        'godzina_rozpoczecia'   => date('H:i', $start_ts),
-        'data_zakonczenia'      => $end_ts ? date('Y-m-d', $end_ts) : '',
-        'godzina_zakonczenia'   => $end_ts ? date('H:i', $end_ts) : '',
+    $fields_to_save = $date_fields + array(
         'nazwa_lokalu'          => sanitize_text_field($_POST['venue_name']),
         'ulica'                 => $street,
         'miejscowosc'           => $city,
@@ -203,7 +201,11 @@ function render_my_events_shortcode() {
 
     ob_start();
     ?>
-    <div id="ajax-main-messages"></div>
+    <div id="ajax-main-messages">
+        <?php if ( isset($_GET['added']) && '1' === $_GET['added'] ) : ?>
+            <div class="alert-message alert-success">🎉 <?php esc_html_e('Dziękujemy! Twoje wydarzenie zostało pomyślnie dodane.', 'amnestympl'); ?></div>
+        <?php endif; ?>
+    </div>
 
     <div id="ajax-table-container">
         <?php

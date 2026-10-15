@@ -13,6 +13,86 @@
         filter: grayscale(80%) contrast(1.1);
     }
 }
+// Marker popup (built in para.js → initMap/buildPopup)
+.events-map-popup {
+    .leaflet-popup-content-wrapper {
+        border-radius: 0;
+        border: 2px solid $color-dark;
+        box-shadow: 4px 4px 0 rgba(0, 0, 0, 0.15);
+        padding: 0;
+    }
+
+    .leaflet-popup-content {
+        margin: 16px 18px;
+        font-size: $font-size-medium;
+        line-height: 1.4;
+        color: $color-dark;
+    }
+
+    .leaflet-popup-tip {
+        border: 2px solid $color-dark;
+        box-shadow: none;
+    }
+
+    // Leaflet's own rule (.leaflet-container a.leaflet-popup-close-button) loads later, so out-specify it
+    .leaflet-popup-close-button.leaflet-popup-close-button {
+        color: $color-dark;
+        top: 4px;
+        right: 4px;
+    }
+
+    &__title {
+        font-family: 'Oswald', sans-serif;
+        font-size: 18px;
+        font-weight: 700;
+        line-height: 1.2;
+        margin-bottom: 6px;
+        padding-right: 12px;
+    }
+
+    &__venue {
+        font-weight: 700;
+    }
+
+    &__address {
+        color: $color-text-secondary;
+    }
+
+    &__dates {
+        margin-top: 8px;
+        font-weight: 600;
+    }
+
+    &__badges {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 6px;
+        margin-top: 10px;
+    }
+
+    &__badge {
+        display: inline-block;
+        padding: 2px 8px;
+        font-size: 12px;
+        font-weight: 600;
+        border: 1px solid $color-dark;
+
+        &.is-public {
+            background-color: #84cc16;
+        }
+
+        &.is-private {
+            background-color: $color-dpd;
+            border-color: $color-dpd;
+            color: $color-text-light;
+        }
+
+        &.is-accessible {
+            background-color: $color-yellow;
+        }
+    }
+}
+
 .amnesty-custom-marker {
     width: 20px;
     height: 20px;

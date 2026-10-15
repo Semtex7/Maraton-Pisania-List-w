@@ -21,13 +21,20 @@ function handle_event_submission() {
 
         // Sanitize incoming fields
         $title      = sanitize_text_field($_POST['organizer_name']);
-        $start_date = sanitize_text_field($_POST['start_date']);
+        $start      = sanitize_text_field($_POST['start_datetime'] ?? '');
+        $end        = sanitize_text_field($_POST['end_datetime'] ?? '');
         $street     = sanitize_text_field($_POST['street']);
         $city       = sanitize_text_field($_POST['city']);
 
         // Validate required fields
-        if ( empty($title) || empty($start_date) || empty($street) || empty($city) ) {
+        if ( empty($title) || empty($start) || empty($street) || empty($city) ) {
             $event_form_error = esc_html__('Proszę wypełnić wszystkie wymagane pola (w tym ulicę i miejscowość).', 'amnestympl');
+            return;
+        }
+
+        $date_fields = maraton_event_date_meta($start, $end);
+        if ( is_wp_error($date_fields) ) {
+            $event_form_error = $date_fields->get_error_message();
             return;
         }
 
@@ -87,18 +94,8 @@ function handle_event_submission() {
         ));
 
         if ( $post_id ) {
-            $start_time = sanitize_text_field($_POST['start_time']);
-            $end_date   = sanitize_text_field($_POST['end_date']);
-            $end_time   = sanitize_text_field($_POST['end_time']);
-
-            // Prepare meta fields array (dates also in the combined format used by the panel)
-            $fields_to_save = array(
-                'data_rozpoczecia'     => $start_date,
-                'godzina_rozpoczecia'  => $start_time,
-                'data_zakonczenia'     => $end_date,
-                'godzina_zakonczenia'  => $end_time,
-                'data_czas_rozpoczecia' => date('Y-m-d H:i:s', strtotime(trim($start_date . ' ' . $start_time))),
-                'data_czas_zakonczenia' => ! empty($end_date) ? date('Y-m-d H:i:s', strtotime(trim($end_date . ' ' . $end_time))) : '',
+            // Prepare meta fields array (dates in both formats, see maraton_event_date_meta())
+            $fields_to_save = $date_fields + array(
                 'nazwa_lokalu'         => sanitize_text_field($_POST['venue_name']),
                 'ulica'                => $street,
                 'miejscowosc'          => $city,
@@ -119,14 +116,15 @@ function handle_event_submission() {
                 }
             }
 
-            // Redirect back to the same tab
+            // Redirect back to the panel
             $return_url = wp_get_referer() ? wp_get_referer() : get_permalink();
-            
+
             // Clean URL from existing hashes before appending new ones
             $clean_url = explode('#', $return_url)[0];
-            
-            // Append the query arg and the hash for the "Add Event" tab
-            $redirect_url = add_query_arg('added', '1', $clean_url) . '#zakladka-dodaj-wydarzenie';
+
+            // The hash opens the "My events" tab (CSS ID of the Elementor tab, see KK.openTabFromHash);
+            // [my_events] shows the confirmation for ?added=1
+            $redirect_url = add_query_arg('added', '1', $clean_url) . '#zakladka-moje-wydarzenia';
             
             wp_safe_redirect($redirect_url);
             exit; 
@@ -148,10 +146,7 @@ function render_event_form() {
 
     ob_start();
 
-    // Display success message
-    if ( isset($_GET['added']) && $_GET['added'] == '1' ) {
-        echo '<div class="alert-message alert-success">🎉 ' . esc_html__('Dziękujemy! Twoje wydarzenie zostało pomyślnie dodane.', 'amnestympl') . '</div>';
-    }
+    // The success message (?added=1) is shown by [my_events]
 
     // Display validation errors
     if ( ! empty($event_form_error) ) {
@@ -162,6 +157,8 @@ function render_event_form() {
     $val_org    = isset($_POST['organizer_name']) ? esc_attr($_POST['organizer_name']) : '';
     $val_street = isset($_POST['street']) ? esc_attr($_POST['street']) : '';
     $val_city   = isset($_POST['city']) ? esc_attr($_POST['city']) : '';
+    $val_start  = isset($_POST['start_datetime']) ? esc_attr($_POST['start_datetime']) : '';
+    $val_end    = isset($_POST['end_datetime']) ? esc_attr($_POST['end_datetime']) : '';
 
     ?>
     <form action="" method="post" class="new-event-form">
@@ -173,25 +170,14 @@ function render_event_form() {
         </div>
 
         <h3 class="form-section-title"><?php esc_html_e('Data i godzina maratonu', 'amnestympl'); ?></h3>
-        <div class="form-section split-row">
+        <div class="form-section split-row event-dates">
             <div>
-                <label class="form-label"><?php esc_html_e('Data rozpoczęcia', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
-                <input type="date" name="start_date" class="form-input" required>
+                <label class="form-label"><?php esc_html_e('Rozpoczęcie', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
+                <input type="datetime-local" name="start_datetime" class="form-input" value="<?php echo $val_start; ?>" required>
             </div>
             <div>
-                <label class="form-label"><?php esc_html_e('Godzina', 'amnestympl'); ?> <span class="required-asterisk">*</span></label>
-                <input type="time" name="start_time" class="form-input" required>
-            </div>
-        </div>
-        
-        <div class="form-section split-row">
-            <div>
-                <label class="form-label"><?php esc_html_e('Data zakończenia', 'amnestympl'); ?></label>
-                <input type="date" name="end_date" class="form-input">
-            </div>
-            <div>
-                <label class="form-label"><?php esc_html_e('Godzina', 'amnestympl'); ?></label>
-                <input type="time" name="end_time" class="form-input">
+                <label class="form-label"><?php esc_html_e('Zakończenie', 'amnestympl'); ?></label>
+                <input type="datetime-local" name="end_datetime" class="form-input" value="<?php echo $val_end; ?>">
             </div>
         </div>
 

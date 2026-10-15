@@ -23,7 +23,50 @@ jQuery(document).ready(function ($) {
                 this.initPanelAjax();
                 this.stickyHeader();
                 // this.blockCounter();
-                this.eventModal()
+                this.eventModal();
+                this.openTabFromHash();
+                this.eventDateLimits();
+            },
+
+            // Elementor Nested Tabs ignore the URL hash. The hash is the tab's "CSS ID" set in Elementor
+            // (e.g. /panel/#zakladka-moje-wydarzenia) — Elementor puts it on the tab title button.
+            openTabFromHash: function () {
+                function openTab() {
+                    let hash = window.location.hash.slice(1);
+                    if (!hash) return;
+                    let tab = document.getElementById(decodeURIComponent(hash));
+                    if (tab && tab.classList.contains('e-n-tab-title') && tab.getAttribute('aria-selected') !== 'true') {
+                        tab.click();
+                    }
+                }
+
+                // Elementor binds tab handlers after DOM ready
+                if (document.readyState === 'complete') {
+                    openTab();
+                } else {
+                    window.addEventListener('load', openTab);
+                }
+                window.addEventListener('hashchange', openTab);
+
+                // One-time confirmation after adding an event: drop ?added=1 so a refresh doesn't show it again
+                let url = new URL(window.location.href);
+                if (url.searchParams.has('added')) {
+                    url.searchParams.delete('added');
+                    window.history.replaceState(null, '', url.toString());
+                }
+            },
+
+            // Event forms (add + AJAX edit): the end can't be earlier than the start
+            eventDateLimits: function () {
+                document.addEventListener('change', function (e) {
+                    if (e.target.name !== 'start_datetime' || !e.target.form) return;
+                    let endInput = e.target.form.querySelector('[name="end_datetime"]');
+                    if (!endInput) return;
+                    endInput.min = e.target.value;
+                    if (endInput.value && endInput.value < e.target.value) {
+                        endInput.value = '';
+                    }
+                });
             },
 
             initMap: function () {
@@ -37,6 +80,37 @@ jQuery(document).ready(function ($) {
                     maxZoom: 19,
                     attribution: '© OpenStreetMap'
                 }).addTo(map);
+
+                function escapeHtml(value) {
+                    let div = document.createElement('div');
+                    div.textContent = value == null ? '' : String(value);
+                    return div.innerHTML;
+                }
+
+                // Popup: organizer, venue, address, dates, status badges
+                function buildPopup(item) {
+                    let html = '<div class="events-map-popup__title">' + escapeHtml(item.title) + '</div>';
+
+                    if (item.venue) {
+                        html += '<div class="events-map-popup__venue">' + escapeHtml(item.venue) + '</div>';
+                    }
+                    html += '<div class="events-map-popup__address">' + escapeHtml(item.address) + '</div>';
+
+                    if (item.dates) {
+                        html += '<div class="events-map-popup__dates">' + escapeHtml(item.dates) + '</div>';
+                    }
+
+                    html += '<div class="events-map-popup__badges">';
+                    html += item.is_public
+                        ? '<span class="events-map-popup__badge is-public">Otwarte dla wszystkich</span>'
+                        : '<span class="events-map-popup__badge is-private" title="Niedostępne dla osób z zewnątrz">Wydarzenie zamknięte</span>';
+                    if (item.accessible) {
+                        html += '<span class="events-map-popup__badge is-accessible">Dostępne dla osób z niepełnosprawnościami</span>';
+                    }
+                    html += '</div>';
+
+                    return html;
+                }
 
                 // Asynchroniczne pobieranie danych wydarzeń przez AJAX
                 fetch(kkAjax.ajaxurl + '?action=get_events_map_data')
@@ -60,13 +134,11 @@ jQuery(document).ready(function ($) {
                                 // Initialize marker with the custom icon
                                 let marker = L.marker([eventItem.lat, eventItem.lng], { icon: customIcon });
 
-                                let popupText = '<strong>' + eventItem.title + '</strong><br>' + eventItem.address;
-
-                                if (!eventItem.is_public) {
-                                    popupText += '<br><br><span style="color: #dc0032; font-weight: bold; padding: 2px 0;">Wydarzenie zamknięte</span><br><span style="font-size: 11px;">(niedostępne dla osób z zewnątrz)</span>';
-                                }
-
-                                marker.bindPopup(popupText);
+                                marker.bindPopup(buildPopup(eventItem), {
+                                    className: 'events-map-popup',
+                                    maxWidth: 280,
+                                    minWidth: 200
+                                });
                                 marker.addTo(map);
 
                                 let position = marker.getLatLng();
@@ -74,7 +146,7 @@ jQuery(document).ready(function ($) {
 
                                 allMarkers.push({
                                     markerObject: marker,
-                                    title: eventItem.title.toLowerCase(),
+                                    title: (eventItem.title + ' ' + (eventItem.venue || '')).toLowerCase(),
                                     address: eventItem.address.toLowerCase(),
                                     position: position
                                 });

@@ -25,7 +25,8 @@
     margin-bottom: 16px;
 }
 
-.form-actions-inline {
+.form-actions-inline,
+.form-actions {
     display: flex;
     align-items: center;
     gap: $spacing-large;

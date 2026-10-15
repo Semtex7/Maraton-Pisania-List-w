@@ -4,7 +4,7 @@ add_action('wp_ajax_nopriv_get_events_map_data', 'maraton_get_events_map_data');
 
 function maraton_get_events_map_data() {
     // Check for cached data
-    $cached_data = get_transient('maraton_events_map_data');
+    $cached_data = get_transient('maraton_events_map_data_v2');
     if ( $cached_data !== false ) {
         wp_send_json_success( $cached_data );
     }
@@ -42,12 +42,17 @@ function maraton_get_events_map_data() {
             }
 
             if ( ! empty($lat) && ! empty($lng) ) {
+                $start = maraton_get_event_datetime($post_id, 'start');
+
                 $map_points[] = array(
-                    'title'     => get_the_title(),
-                    'address'   => get_post_meta($post_id, 'ulica', true) . ', ' . get_post_meta($post_id, 'miejscowosc', true),
-                    'lat'       => $lat,
-                    'lng'       => $lng,
-                    'is_public' => $is_public 
+                    'title'      => get_the_title(),
+                    'venue'      => (string) get_post_meta($post_id, 'nazwa_lokalu', true),
+                    'address'    => get_post_meta($post_id, 'ulica', true) . ', ' . get_post_meta($post_id, 'miejscowosc', true),
+                    'dates'      => $start ? maraton_format_event_dates($start, maraton_get_event_datetime($post_id, 'end')) : '',
+                    'lat'        => $lat,
+                    'lng'        => $lng,
+                    'is_public'  => $is_public,
+                    'accessible' => '1' === (string) get_post_meta($post_id, 'dostepnosc', true),
                 );
             }
         }
@@ -55,7 +60,7 @@ function maraton_get_events_map_data() {
     }
 
     // Save transient for 1 hour
-    set_transient('maraton_events_map_data', $map_points, HOUR_IN_SECONDS);
+    set_transient('maraton_events_map_data_v2', $map_points, HOUR_IN_SECONDS);
 
     wp_send_json_success( $map_points );
 }
@@ -64,7 +69,7 @@ function maraton_get_events_map_data() {
 
 add_action('save_post_wydarzenie', 'maraton_clear_events_map_cache');
 function maraton_clear_events_map_cache() {
-    delete_transient('maraton_events_map_data');
+    delete_transient('maraton_events_map_data_v2');
 }
 
 // 3. SHORTCODE: FRONTEND MAPY

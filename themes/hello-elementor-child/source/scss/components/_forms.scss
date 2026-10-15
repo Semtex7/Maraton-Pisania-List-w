@@ -142,7 +142,8 @@ form {
   // 1. Standardize all text, date, and time inputs
   input[type="text"],
   input[type="date"],
-  input[type="time"] {
+  input[type="time"],
+  input[type="datetime-local"] {
     width: 100%;
     box-sizing: border-box;
     padding: $input-padding; // Using variable from your previous setup
@@ -157,6 +158,29 @@ form {
     &:focus {
       outline: none;
       border-color: $color-highlight;
+    }
+  }
+
+  // Date + time in one field (start / end), same look as the text inputs
+  input[type="datetime-local"] {
+    font-family: inherit;
+    font-weight: $input-font-weight;
+    min-width: 0;
+    cursor: pointer;
+
+    &::-webkit-calendar-picker-indicator {
+      cursor: pointer;
+    }
+  }
+
+  // Two fields side by side (dates, city + zip), stacked on narrow screens
+  .split-row {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    column-gap: $spacing-xlarge;
+
+    @media (max-width: 600px) {
+      grid-template-columns: 1fr;
     }
   }
 

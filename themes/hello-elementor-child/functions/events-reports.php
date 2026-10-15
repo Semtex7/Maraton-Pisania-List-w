@@ -71,7 +71,7 @@ function ajax_get_report_form() {
         </div>
 
         <div class="form-actions">
-            <button type="submit" id="ajax-report-submit-button" class="save-button"><?php esc_html_e('Wyślij raport', 'amnestympl'); ?></button>
+            <button type="submit" id="ajax-report-submit-button" class="save-button amnesty-card-button"><?php esc_html_e('Wyślij raport', 'amnestympl'); ?></button>
             <button type="button" id="cancel-ajax-report" class="cancel-button"><?php esc_html_e('Anuluj', 'amnestympl'); ?></button>
         </div>
         

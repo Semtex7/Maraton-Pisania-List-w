@@ -58,6 +58,7 @@ function amnesty_register_global_settings() {
         // API Keys (Standard text strings)
         'amnesty_sf_client_id'            => 'text',
         'amnesty_sf_client_secret'        => 'text',
+        'amnesty_sf_consent_field'        => 'sf_field',
 
         // Edition date range (Y-m-d)
         'amnesty_edition_start'           => 'date',
@@ -69,6 +70,8 @@ function amnesty_register_global_settings() {
 
         if ( $type === 'date' ) {
             $sanitize_callback = 'amnesty_sanitize_date';
+        } elseif ( $type === 'sf_field' ) {
+            $sanitize_callback = 'amnesty_sanitize_sf_field';
         } elseif ( $type === 'color' ) {
             $sanitize_callback = 'sanitize_hex_color';
         } elseif ( $type === 'url' ) {
@@ -89,6 +92,12 @@ function amnesty_register_global_settings() {
 function amnesty_sanitize_date( $value ) {
     $value = sanitize_text_field( (string) $value );
     return preg_match( '/^\d{4}-\d{2}-\d{2}$/', $value ) ? $value : '';
+}
+
+// Salesforce API field name (e.g. Newsletter_Subscribe__c); empty disables sending the consent
+function amnesty_sanitize_sf_field( $value ) {
+    $value = trim( sanitize_text_field( (string) $value ) );
+    return preg_match( '/^[A-Za-z][A-Za-z0-9_]*$/', $value ) ? $value : '';
 }
 
 // Helper function to render table rows
@@ -166,6 +175,8 @@ function amnesty_render_global_settings_page() {
                 amnesty_field_row(__( 'Instance URL', 'amnesty-petitions' ), '<input type="url" name="amnesty_sf_instance_url" value="'.esc_attr(get_option('amnesty_sf_instance_url', '')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Client ID', 'amnesty-petitions' ), '<input type="text" name="amnesty_sf_client_id" value="'.esc_attr(get_option('amnesty_sf_client_id', '')).'" style="width:100%" />');
                 amnesty_field_row(__( 'Client Secret', 'amnesty-petitions' ), '<input type="password" name="amnesty_sf_client_secret" value="'.esc_attr(get_option('amnesty_sf_client_secret', '')).'" style="width:100%" />');
+                amnesty_field_row(__( 'Pole zgody marketingowej (Contact)', 'amnesty-petitions' ), '<input type="text" name="amnesty_sf_consent_field" value="'.esc_attr(get_option('amnesty_sf_consent_field', 'Newsletter_Subscribe__c')).'" style="width:100%" pattern="[A-Za-z][A-Za-z0-9_]*" />'
+                    . '<p class="description">'.esc_html__( 'Nazwa API pola typu checkbox w obiekcie Contact, ustawianego na „tak”, gdy osoba zaznaczy zgodę na informacje o akcjach. Puste = zgoda nie jest wysyłana. Do potwierdzenia z administratorem Salesforce.', 'amnesty-petitions' ).'</p>');
             ?>
             </table>
 

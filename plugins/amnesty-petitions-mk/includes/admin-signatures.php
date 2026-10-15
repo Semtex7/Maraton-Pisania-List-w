@@ -54,7 +54,8 @@ class Amnesty_Signatures_List_Table extends WP_List_Table {
     // Define bulk actions (Foundation for export)
     protected function get_bulk_actions() {
         $actions = array(
-            'export_csv' => __( 'Eksportuj do CSV', 'amnesty-petitions' )
+            'export_csv' => __( 'Eksportuj do CSV', 'amnesty-petitions' ),
+            'delete'     => __( 'Usuń (nieodwracalne)', 'amnesty-petitions' ),
         );
         return $actions;
     }
@@ -98,8 +99,19 @@ class Amnesty_Signatures_List_Table extends WP_List_Table {
                 $camp = $campaign_consent ? '✅' : '❌';
                 $news = $newsletter_consent ? '✅' : '❌';
                 return $camp . ' / ' . $news;
-            case 'salesforce_synced': 
-                return $salesforce_synced ? '<span title="Zsynchronizowano z Salesforce">✅</span>' : '<span title="Brak synchronizacji">❌</span>';
+            case 'salesforce_synced':
+                // Background sync status (includes/salesforce-sync.php)
+                if ( $salesforce_synced ) {
+                    return '<span title="Zsynchronizowano z Salesforce">✅</span>';
+                }
+                if ( '' === (string) get_post_meta( $item->petition_id, '_amnesty_petition_topic_name', true ) ) {
+                    return '<span title="Petycja bez Salesforce Topic – nie jest synchronizowana">—</span>';
+                }
+                $attempts = (int) ( $item->salesforce_attempts ?? 0 );
+                if ( $attempts >= AMNESTY_SF_MAX_ATTEMPTS ) {
+                    return '<span title="Synchronizacja nieudana po ' . $attempts . ' próbach (szczegóły w amnesty-debug.log)">❌</span>';
+                }
+                return '<span title="W kolejce do synchronizacji' . ( $attempts ? ' (nieudane próby: ' . $attempts . ')' : '' ) . '">⏳</span>';
             case 'signed_at':
                 return esc_html( date_i18n( get_option( 'date_format' ) . ' ' . get_option( 'time_format' ), strtotime( $item->signed_at ) ) );
             default:
@@ -205,6 +217,10 @@ function amnesty_render_signatures_page() {
     <div class="wrap">
         <h1 class="wp-heading-inline"><?php esc_html_e( 'Zebrane podpisy pod petycjami', 'amnesty-petitions' ); ?></h1>
         <hr class="wp-header-end">
+        <?php if ( isset( $_GET['deleted'] ) ) : ?>
+            <div class="notice notice-success is-dismissible"><p><?php echo esc_html( sprintf( __( 'Usunięto podpisów: %d. Dane w Salesforce nie zostały zmienione.', 'amnesty-petitions' ), absint( $_GET['deleted'] ) ) ); ?></p></div>
+        <?php endif; ?>
+        <p class="description"><?php esc_html_e( 'Usunięcie wszystkich danych jednej osoby (wniosek RODO): Narzędzia → Usuń dane osobowe. Eksport: Narzędzia → Eksportuj dane osobowe.', 'amnesty-petitions' ); ?></p>
         
         <form id="signatures-filter" method="post">
             <?php
@@ -212,6 +228,15 @@ function amnesty_render_signatures_page() {
             $signatures_table->display();
             ?>
         </form>
+        <script>
+            document.getElementById('signatures-filter').addEventListener('submit', function (e) {
+                var actions = [this.querySelector('[name="action"]'), this.querySelector('[name="action2"]')];
+                var isDelete = actions.some(function (s) { return s && s.value === 'delete'; });
+                if (isDelete && !confirm('Usunąć zaznaczone podpisy? Tej operacji nie można cofnąć.')) {
+                    e.preventDefault();
+                }
+            });
+        </script>
     </div>
     <?php
 }
@@ -226,29 +251,44 @@ function amnesty_process_signatures_bulk_actions() {
     }
 
     // Capture the action from either the top or bottom bulk action dropdown
-    $action = isset( $_REQUEST['action'] ) ? $_REQUEST['action'] : '';
-    $action2 = isset( $_REQUEST['action2'] ) ? $_REQUEST['action2'] : '';
+    $action = isset( $_REQUEST['action'] ) ? sanitize_key( $_REQUEST['action'] ) : '';
+    $action2 = isset( $_REQUEST['action2'] ) ? sanitize_key( $_REQUEST['action2'] ) : '';
+    $bulk_action = in_array( $action, array( 'export_csv', 'delete' ), true ) ? $action : ( in_array( $action2, array( 'export_csv', 'delete' ), true ) ? $action2 : '' );
 
-    // Proceed only if the export action was selected
-    if ( $action !== 'export_csv' && $action2 !== 'export_csv' ) {
+    if ( '' === $bulk_action ) {
         return;
+    }
+
+    // Personal data: administrators only, and only from the list table form (nonce printed by WP_List_Table).
+    // This runs on admin_init, before the theme redirects subscribers away from wp-admin.
+    if ( ! current_user_can( 'manage_options' ) || ! isset( $_REQUEST['_wpnonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_REQUEST['_wpnonce'] ) ), 'bulk-signatures' ) ) {
+        wp_die( esc_html__( 'Brak uprawnień do tej operacji.', 'amnesty-petitions' ), 403 );
     }
 
     // Verify if any checkboxes were selected in the table
     if ( empty( $_REQUEST['signature_ids'] ) || ! is_array( $_REQUEST['signature_ids'] ) ) {
-        // You could add an admin notice here if needed
         return;
     }
 
     global $wpdb;
     $table_name = $wpdb->prefix . 'amnesty_signatures';
-    
+
     // Sanitize selected IDs to prevent SQL injection
-    $ids = array_map( 'intval', $_REQUEST['signature_ids'] );
+    $ids = array_filter( array_map( 'intval', $_REQUEST['signature_ids'] ) );
+    if ( empty( $ids ) ) {
+        return;
+    }
     $ids_string = implode( ',', $ids );
 
-    // Fetch the specific records from the database
-    $results = $wpdb->get_results( "SELECT * FROM $table_name WHERE id IN ($ids_string)", ARRAY_A );
+    // Delete selected signatures (e.g. GDPR erasure request); Salesforce data has to be removed separately
+    if ( 'delete' === $bulk_action ) {
+        $deleted = (int) $wpdb->query( "DELETE FROM $table_name WHERE id IN ($ids_string)" );
+        wp_safe_redirect( add_query_arg( array( 'page' => 'amnesty-signatures', 'deleted' => $deleted ), admin_url( 'edit.php?post_type=amnesty_petition' ) ) );
+        exit;
+    }
+
+    // Fetch the specific records from the database (columns match the CSV header below)
+    $results = $wpdb->get_results( "SELECT id, petition_id, first_name, last_name, email, phone, city, letter_type, custom_message, campaign_consent, newsletter_consent, signed_at FROM $table_name WHERE id IN ($ids_string)", ARRAY_A );
 
     if ( empty( $results ) ) {
         return;

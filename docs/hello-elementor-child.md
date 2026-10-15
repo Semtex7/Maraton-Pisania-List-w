@@ -29,7 +29,7 @@ Motyw potomny Hello Elementor. Poza wyglądem strony zawiera logikę dla organiz
 
 - `[event_login]` — POST obsługiwany w `template_redirect` (priorytet 1) przez `wp_signon()`, nonce `event_login_nonce`. Błąd zostaje na stronie formularza; sukces → `home_url('/panel/')`.
 - `[event_registration]` — pola: login, e-mail, hasło; `wp_create_user()`, automatyczne zalogowanie (`wp_set_auth_cookie`) i przekierowanie do `/panel/`. Rola nowego konta wynika z domyślnej roli WordPressa (kod jej nie ustawia).
-- [`custom-functions.php`](../themes/hello-elementor-child/functions/custom-functions.php): niezalogowany na stronie `panel` → `wp_login_url()` (standardowy login WP, nie `[event_login]`). Pominięte w podglądzie Elementora.
+- [`custom-functions.php`](../themes/hello-elementor-child/functions/custom-functions.php): niezalogowany na stronie `panel` → `wp_login_url()` (standardowy login WP, nie `[event_login]`; w zmianach roboczych z 2026-10-14 → `/zaloguj-sie/`). Pominięte w podglądzie Elementora.
 - [`events-core.php`](../themes/hello-elementor-child/functions/events-core.php): użytkownik z pierwszą rolą `subscriber` wchodzący do `wp-admin` (poza AJAX) → `/panel/`. Admin bar ukryty dla osób bez `manage_options`.
 - Filtr `wp_nav_menu_objects` dopasowuje pozycje menu **po tytule** („Zaloguj się”, „Zarejestruj się”, „Panel”) i ukrywa/podmienia je zależnie od zalogowania. Zmiana tytułu w Wygląd → Menu psuje to zachowanie.
 

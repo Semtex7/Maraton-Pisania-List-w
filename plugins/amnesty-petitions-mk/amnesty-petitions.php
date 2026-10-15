@@ -24,8 +24,11 @@ require_once AMNESTY_PETITIONS_PATH . 'includes/settings.php';
 require_once AMNESTY_PETITIONS_PATH . 'includes/edition.php';
 require_once AMNESTY_PETITIONS_PATH . 'includes/shortcodes.php';
 require_once AMNESTY_PETITIONS_PATH . 'includes/ajax-salesforce.php';
+require_once AMNESTY_PETITIONS_PATH . 'includes/salesforce-sync.php';
 // require_once AMNESTY_PETITIONS_PATH . 'includes/ajax-map.php';
 require_once AMNESTY_PETITIONS_PATH . 'includes/admin-signatures.php';
+require_once AMNESTY_PETITIONS_PATH . 'includes/privacy.php';
+require_once AMNESTY_PETITIONS_PATH . 'includes/form-protection.php';
 require_once AMNESTY_PETITIONS_PATH . 'includes/elementor-widgets.php';
 
 

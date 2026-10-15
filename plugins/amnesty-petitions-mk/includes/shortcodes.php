@@ -62,6 +62,7 @@ function amnesty_petition_render_shortcode( $atts ) {
         <form id="amnesty-petition-form-<?php echo esc_attr( $petition_id ); ?>" class="amnesty-petition-form" method="POST">
             <?php wp_nonce_field( 'amnesty_sign_petition', 'amnesty_sign_nonce' ); ?>
             <input type="hidden" name="petition_id" value="<?php echo esc_attr( $petition_id ); ?>">
+            <?php amnesty_form_protection_fields(); ?>
             <input type="hidden" name="action" value="submit_amnesty_petition">
             <input type="hidden" name="letter_type" id="amnesty-letter-type-<?php echo esc_attr( $petition_id ); ?>" value="appeal">
 
@@ -188,9 +189,15 @@ function amnesty_petition_render_shortcode( $atts ) {
             submitBtn.textContent = '<?php esc_html_e("Wysyłanie...", "amnesty-petitions") ?>';
             msgDiv.style.display = 'none';
             
+            // Seconds since page load, checked server-side (bot protection, includes/form-protection.php)
+            const elapsedField = form.querySelector('[name="amnesty_elapsed"]');
+            if (elapsedField) {
+                elapsedField.value = (performance.now() / 1000).toFixed(1);
+            }
+
             // Gather all form fields securely
             const formData = new FormData(form);
-            
+
             // Perform the AJAX request
             fetch(ajaxUrl, { 
                 method: 'POST', 

@@ -1,0 +1,14 @@
+{
+  "name": "maraton-tests",
+  "private": true,
+  "description": "Load and UI checks for the Maraton site. Integration tests are PHP (wp eval-file), see README.md.",
+  "scripts": {
+    "load:pages": "node load/loadtest.js pages",
+    "load:sign": "node load/loadtest.js sign",
+    "ui": "node ui/ui-check.js"
+  },
+  "devDependencies": {
+    "autocannon": "7.15.0",
+    "puppeteer-core": "23.11.1"
+  }
+}

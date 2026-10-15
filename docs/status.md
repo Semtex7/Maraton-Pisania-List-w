@@ -2,19 +2,20 @@
 
 Stan na: 2026-10-14  
 Gałąź: `develop` (śledzi `origin/develop`)  
-HEAD: `02ddaac` — „Add event report PDF draft” (2026-10-01)  
+HEAD: `39eafd7` — „changes” (2026-10-14 12:52)  
 
 ## Etap projektu
 
 Strona działa lokalnie (Local) i na stagingu (WP Engine). Produkcja nie istnieje — ma powstać ze stagingu na WP Engine w tygodniu od 2026-10-19 (**Decyzja**, właściciel projektu, 2026-10-14).
 
-Zmiany od 2026-10-01 są wyłącznie w drzewie roboczym (niezacommitowane); czy trafiły na staging — niezweryfikowane. Lista zadań do startu: [requirements.md](requirements.md).
+Commit `39eafd7` zawiera zmiany do ok. 12:50 (2026-10-14). Późniejsze zmiany (poprawki po teście na stagingu, przekierowanie `/panel/`, nadawca maili, synchronizacja Salesforce w tle, testy w `tests/`) są w drzewie roboczym — wymagają commita i wdrożenia. Dokumenty modułów (`architecture.md`, `hello-elementor-child.md`, `amnesty-petitions-mk.md`) opisują stan `02ddaac`; nowsze zmiany są wypisane w tym dokumencie. Lista zadań do startu: [requirements.md](requirements.md).
 
 ## Kontrole z 2026-10-14
 
 Wykonane na drzewie roboczym, na działającej stronie lokalnej (WordPress 7.1.3, PHP 8.2 z Local, WP-CLI z Local):
 
 - `php -l` — 32 pliki PHP pluginu i motywu bez błędów; `node --check` — JS bez błędów; `sass` — oba bundle kompilują się; `gulp build` — OK;
+- **testy w repozytorium ([tests/README.md](../tests/README.md)), ostatnie uruchomienie: integracyjne 102/102 OK, UI w Chrome 10/10 OK.** Wcześniejszy opis:
 - **testy integracyjne przez WP-CLI — 63/63 OK** (ostatnie uruchomienie po zmianach popołudniowych; dodatkowo: daty wydarzeń i migracja flagi mapy, zapis edycji w panelu, `[maraton_cta]`, przycisk „Sprawdź wszystkie”, link „zobacz wszystkie”, wyszukiwarka Salesforce Topic na symulowanych odpowiedziach z kontrolą uprawnień i escapowania SOQL, usunięcie InPost; smoke test HTTP `/petycja/` — 3 karty akcji, `/wydarzenie/` — 8 wydarzeń, sekcja materiałów na petycji z tymczasowym plikiem testowym). Każdy zapis w transakcji wycofywanej po teście; ruch do Salesforce i wysyłka e-maili przechwycone (2 próby połączeń zablokowane); po testach w bazie brak danych testowych. Zakres:
   - zapis i sanityzacja dat edycji, brak pól blokujących zapis formularza ustawień;
   - licznik wydarzeń i licznik listów zgodne z bezpośrednim zapytaniem SQL (dla zakresu 2026-01-01–2026-09-30: 7 wydarzeń, 734 listy z 3 petycji); pusty zakres = 0;
@@ -27,9 +28,18 @@ Wykonane na drzewie roboczym, na działającej stronie lokalnej (WordPress 7.1.3
 
 Nie wykonano:
 
-- testów w przeglądarce (kliknięcia, wygląd, mobile) i wysyłki prawdziwych e-maili;
+- testów na urządzeniach mobilnych i wysyłki prawdziwych e-maili (logowanie, panel i formularze sprawdzone w Chrome desktop);
 - zapisu formularza ustawień przez przeglądarkę (sprawdzono wygenerowany HTML i zapis opcji po stronie serwera);
-- testów automatycznych w repozytorium i CI — nie istnieją (skrypt testów integracyjnych jest poza repozytorium).
+- CI — testy są w `tests/`, uruchamiane ręcznie (WP-CLI, npm).
+
+## Obciążenie
+
+Pytanie: czy strona wytrzyma ok. 1000 odwiedzających dziennie. Pomiary: [tests/README.md](../tests/README.md#wyniki-z-2026-10-14-lokalnie-local-na-windows-bez-cache-stron).
+
+- **Strony:** 1000 osób/dzień × kilka odsłon to średnio poniżej 1 odsłony na sekundę. Lokalny serwer (Windows, bez cache) obsłużył ~5 stron/s przy 20 równoczesnych połączeniach bez błędów; na WP Engine strony dla niezalogowanych są dodatkowo serwowane z cache. **Fakt:** pomiar lokalny. **Wniosek (niezweryfikowany na WP Engine):** strony nie są wąskim gardłem.
+- **Podpisy — znaleziony problem, naprawiony w zmianach roboczych:** synchronizacja z Salesforce odbywała się w trakcie wysyłania formularza, po kolei dla każdej podpisywanej petycji (4–5 wywołań API na petycję). Przy „Podpisz wszystkie” i 3 petycjach podpis trwał 3,9 s, przy 10 równoczesnych osobach 12–20 s; przy ~10 bohaterach Maratonu byłoby to ponad 12 s na podpis nawet bez tłoku, a w szczycie (np. po newsletterze) — kolejki i przekroczenia czasu. Teraz podpis zapisuje się od razu (0,17 s), a Salesforce jest synchronizowany w tle ([`salesforce-sync.php`](../plugins/amnesty-petitions-mk/includes/salesforce-sync.php)); 50 równoczesnych podpisów: mediana 2,1 s, 0 błędów.
+- **Przepustowość kolejki:** ~2,3 podpisu/s przy symulowanych 300 ms na wywołanie API (przebieg z limitem 40 s, zaraz po podpisie i co 5 minut). Przy bardzo dużej fali (tysiące „Podpisz wszystkie” w godzinę) Salesforce może być zasilany z opóźnieniem rzędu godzin — dane nie giną, czekają w kolejce. **Propozycja** na później: Salesforce Composite/Bulk API.
+- **Wymaganie wdrożeniowe:** WP-Cron musi działać na WP Engine — [deployment.md](deployment.md#synchronizacja-salesforce-w-tle).
 
 ### Naprawiony błąd: zapis ustawień pluginu (2026-10-14)
 
@@ -64,6 +74,9 @@ Stan `git status` z 2026-10-14 (bez `docs/`): 22 zmienione pliki, 1 usunięty, 1
 | Motyw | zmiany SCSS i przebudowane `dist/front.min.css`, `dist/para.min.js` |
 | Porządek SCSS (2026-10-14) | `source/scss/` podzielone na `base/`, `layout/`, `components/`, `events/`, `widgets/`, `admin/` (mapa folderów w nagłówku `front.scss`); `components/events.scss` i `default.scss` rozbite na pliki tematyczne; style ekranów wp-admin przeniesione z bundla frontu do `admin.scss`; usunięte nieużywane reguły InPost (`.btn-inpost`, `.inpost-selection-status`, `.inpost-map-container`) i `.amnesty-pin-private`. Skompilowany CSS porównano regułę po regule z wersją sprzed zmian: poza wymienionymi różnicami identyczny, jedyna zmiana kolejności to style `.digital-materials-*` (unikalne selektory, bez wpływu na kaskadę). `dist/` przebudowane (`gulp build`) |
 | Funkcje dodane 2026-10-14 (po południu) | lista akcji `/petycja/` (szablon archiwum w pluginie, petycje bieżącej edycji) i link „zobacz wszystkie” przy „Podpisz wszystkie”; sekcja materiałów do pobrania na stronie akcji; lista wydarzeń `/wydarzenie/` (`archive-wydarzenie.php`, `functions/events-list.php`) i przycisk „Sprawdź wszystkie” w `[events_map]`; `[maraton_cta]`; checkbox „widoczne na mapie” w edycji w panelu; daty wydarzeń w obu formatach + `maraton_get_event_datetime()`; migracja flagi mapy; podpowiedzi Salesforce Topic w kokpicie (`amnesty_sf_get_access_token()` wydzielone z wysyłki podpisu); pole tekstu zgody „Podpisz wszystkie”; poprawki: ostrzeżenie `$show_map`, pusty napis „+ Dodaj materiał”, brakujący obrazek zastępczy karty; usunięte: moduł InPost, `block-counterold.php`, `console.log` |
+| Ochrona formularzy, RODO, zgoda w Salesforce (2026-10-14) | **Ochrona przed botami** (bez usług zewnętrznych): pole-pułapka i minimalny czas na stronie (2 s, mierzony w przeglądarce) w petycji i rejestracji; limit na IP: 60 podpisów / 10 min (łagodny — wspólne IP szkół na wydarzeniach), 5 rejestracji / h; blokada logowania po 10 błędnych próbach / 15 min na IP i na konto (także `wp-login.php`, XML-RPC); boty dostają odpowiedź „sukces” bez zapisu. Wymagana zgoda RODO sprawdzana też po stronie serwera. **Naprawiona luka:** eksport podpisów do CSV nie sprawdzał uprawnień ani nonce — zalogowany subskrybent (każdy może się zarejestrować) mógł pobrać dane osobowe podpisujących; teraz `manage_options` + nonce; CSV ma kolumny zgodne z nagłówkiem. **RODO:** podpisy i zgody organizatorów w Narzędzia → Eksportuj / Usuń dane osobowe (wyszukiwanie po e-mailu; przy usuwaniu komunikat o danych w Salesforce); akcja masowa „Usuń” w Podpisach z potwierdzeniem. **Zgoda marketingowa → Salesforce:** pole Contact z ustawień (`amnesty_sf_consent_field`, domyślnie `Newsletter_Subscribe__c`) ustawiane na `true` przy zgodzie, także dla istniejących kontaktów; nigdy na `false`; błąd pola nie blokuje synchronizacji. Log: adresy e-mail maskowane. Pliki: `includes/form-protection.php`, `includes/privacy.php` (plugin), `functions/form-protection.php` (motyw) |
+| Synchronizacja Salesforce w tle + testy (2026-10-14) | podpis nie czeka na Salesforce: kolejka w WP-Cron (zaraz po podpisie i co 5 min), jeden token na przebieg, cache Topic/Contact, ponawianie do 5 prób (`salesforce_attempts`), `DUPLICATE_VALUE` przy przypisaniu = sukces, blokada równoległych przebiegów; status w Podpisach: ✅ / ⏳ / ❌ / —; log bez adresów e-mail (numer podpisu). Schemat tabeli wersjonowany (`amnesty_petitions_db_version` = 2, aktualizacja przy `init`, bez reaktywacji pluginu); stare niezsynchronizowane podpisy nie trafiają do kolejki. Katalog `tests/` (integracyjne, UI, obciążenie) wersjonowany (`.gitignore`) |
+| Poprawki po teście na stagingu (2026-10-14) | podpis maila aktywacyjnego „Zespół Amnesty International”, nazwa nadawcy maili „Maraton Pisania Listów – Amnesty International” (adres nadawcy — [deployment.md](deployment.md#wysyłka-e-maili)); odstęp nad przyciskiem formularza wydarzenia i zamówienia (`.form-section-last`, 32 px); odstęp „Nie pamiętasz hasła?” od przycisku logowania (`style.css`, 20 px) + style komunikatów sukcesu rejestracji/aktywacji; zakładki Elementora (Nested Tabs) zawsze na pełną szerokość — usunięty przeskok przy przełączaniu (`components/_tabs.scss`); `MARATON_VERSION` 1.1 → 1.2 (odświeżenie cache CSS/JS motywu); niezalogowany na `/panel/` → `/zaloguj-sie/` zamiast `wp-login.php` (`custom-functions.php`). Sprawdzone w Chrome (headless) na lokalnej stronie: odstęp logowania 3 → 23 px, szerokość paneli zakładek stała (wcześniej 792/950 px), pozycja zakładek stała także w układzie poziomym |
 | Log pluginu (2026-10-14) | `amnesty_custom_log()` zapisuje do `_wpeprivate/amnesty-debug.log` (stała `AMNESTY_PETITIONS_LOG_DIR`, fallback `error_log`); plik usunięty z indeksu git, reguła `**/amnesty-debug.log` w `.gitignore`; dotychczasowa treść logu przeniesiona lokalnie do `app/public/_wpeprivate/` — szczegóły w [deployment.md](deployment.md#log-pluginu) |
 
 ### Ryzyka zmian roboczych

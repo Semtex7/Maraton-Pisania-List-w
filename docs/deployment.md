@@ -67,3 +67,40 @@ Po zmianie roboczej z 2026-10-14 `amnesty_custom_log()` zapisuje do `ABSPATH . '
 
 - WP Engine: `_wpeprivate` jest katalogiem prywatnym (brak dostępu z sieci) — **założenie** na podstawie konwencji WP Engine, do sprawdzenia na stagingu (punkt 8).
 - Local: konfiguracja nginx w `conf/nginx` nie blokuje `_wpeprivate`, więc lokalnie plik jest dostępny przez HTTP. Dotyczy tylko maszyny deweloperskiej.
+
+## Wysyłka e-maili
+
+Stan na 2026-10-14 (staging `maratonpisadev.wpenginepowered.com`): maile (aktywacja konta, reset hasła) wychodzą z domyślnego adresu WordPressa `wordpress@<domena strony>`, czyli `wordpress@maratonpisadev.wpenginepowered.com`, a Gmail pokazuje „przez wpenginepowered.com”.
+
+**Fakty (DNS amnesty.org.pl, sprawdzone 2026-10-14):**
+
+- SPF: `v=spf1 mx include:spf.protection.outlook.com include:_spf.jupiter.salesmanago.pl include:mailing.bitcarvers.com -all` — serwery WP Engine nie są autoryzowane;
+- DMARC: `p=none` (raporty na `emailbouncesnoreply@amnesty.org.pl`);
+- poczta domeny: Microsoft 365 (`amnesty-org-pl.mail.protection.outlook.com`).
+
+**Co się stanie na produkcji bez zmian:** WordPress użyje `wordpress@<domena produkcji>` (np. `wordpress@maraton.amnesty.org.pl`), wysyłka nadal pójdzie przez WP Engine — adres nie będzie autoryzowany (SPF/DKIM), więc maile mogą trafiać do spamu i nadal mieć dopisek „przez …”. Ustawienie samego nagłówka `From: …@amnesty.org.pl` w kodzie pogorszyłoby sytuację (SPF `-all`, brak DKIM).
+
+**Kod (zmiany robocze 2026-10-14):** nazwa nadawcy „Maraton Pisania Listów – Amnesty International” zamiast „WordPress” (`maraton_mail_from_name()` w [`custom-functions.php`](../themes/hello-elementor-child/functions/custom-functions.php)); podpis maila aktywacyjnego „Zespół Amnesty International”. Adresu nadawcy kod nie zmienia.
+
+**Propozycja (do decyzji z IT Amnesty):** wysyłka przez Microsoft 365 z dedykowanej skrzynki (np. `maraton@amnesty.org.pl`, adres już używany na stronie) za pomocą wtyczki SMTP (np. WP Mail SMTP, mailer Microsoft 365 / Outlook) — SPF już obejmuje Microsoft 365, nadawca będzie zgodny z domeną. Alternatywa: usługa transakcyjna dopisana do SPF i z kluczem DKIM dla domeny. Po konfiguracji: test aktywacji konta i resetu hasła, sprawdzenie nagłówków (SPF/DKIM/DMARC = pass).
+
+## Synchronizacja Salesforce w tle
+
+Od zmian roboczych z 2026-10-14 podpisy są wysyłane do Salesforce przez WP-Cron ([`salesforce-sync.php`](../plugins/amnesty-petitions-mk/includes/salesforce-sync.php)): zaraz po podpisie i co 5 minut. Status każdego podpisu widać w Petitions → Podpisy (✅ zsynchronizowany, ⏳ w kolejce, ❌ nieudany po 5 próbach, — petycja bez Topic).
+
+Przy wdrożeniu:
+
+1. **WP-Cron musi działać.** Domyślnie WordPress uruchamia go przy odwiedzinach strony. Na WP Engine zalecane jest włączenie crona po stronie serwera (User Portal → środowisko → Utilities / „WP Engine Alternate Cron” lub zgłoszenie do supportu) — **do sprawdzenia** na stagingu: po podpisie testowym status powinien zmienić się z ⏳ na ✅ w ciągu kilku minut.
+2. **Schemat tabeli aktualizuje się sam** przy pierwszym żądaniu po wdrożeniu (`amnesty_petitions_db_version` 1 → 2: kolumna `salesforce_attempts`). Podpisy, które były niezsynchronizowane przed aktualizacją, nie są dodawane do kolejki.
+3. **Przed utworzeniem produkcji ze stagingu** usuń testowe podpisy ze stagingu (lub tabelę z kopii produkcyjnej) — inaczej podpisy testowe dodane po wdrożeniu kolejki zostaną wysłane do Salesforce produkcyjnego po zmianie danych API.
+4. Ręczne uruchomienie kolejki: `wp eval 'print_r( amnesty_sf_process_queue() );'`.
+
+## Testy przed wdrożeniem
+
+[tests/README.md](../tests/README.md): `wp eval-file wp-content/tests/integration/run.php` (bezpieczne także na stagingu — zmiany są wycofywane), test UI z kontem testowym. Katalog `tests/` jest w repozytorium; pliki PHP działają tylko przez WP-CLI. Jeśli nie ma trafiać na serwer, dopisz `wp-content/tests/` do `.wpe-push-ignore`.
+
+## Ochrona formularzy i zgoda w Salesforce — do sprawdzenia na stagingu
+
+- **Limity na adres IP** (petycja 60 / 10 min, rejestracja 5 / h, logowanie 10 błędów / 15 min) zakładają, że WordPress widzi prawdziwy adres odwiedzającego w `REMOTE_ADDR`. Na WP Engine tak powinno być (proxy przekazuje adres klienta) — **do sprawdzenia**: jeśli wszyscy dostaliby ten sam adres, limity zadziałałyby globalnie. Limity zmienia się filtrami `amnesty_petition_rate_limit` i `maraton_form_limits`.
+- **Pole zgody marketingowej:** Petitions → Ustawienia → Salesforce API → „Pole zgody marketingowej”, domyślnie `Newsletter_Subscribe__c` (pole istnieje w sandboxie, sprawdzone 2026-10-14). **Do potwierdzenia z administratorem Salesforce**, czy to właściwe pole (alternatywy w sandboxie: `Use_Personal_Data__c`, `Interest_Involvement__c`) i czy istnieje na produkcji. Po podpisie testowym ze zgodą sprawdź pole w Contact.
+- **Do rozważenia z administratorem Salesforce:** pola `Last_Petition__c`, `Last_Petition_Date__c`, `First_Petition__c`, `petition_source__c` w Contact wyglądają na używane przez inne formularze petycji Amnesty — Maraton może je uzupełniać tak samo (**propozycja**, niezaimplementowane).

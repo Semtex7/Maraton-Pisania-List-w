@@ -97,13 +97,11 @@ Strona główna = strona ID 15 „Maraton Pisania Listów”.
 
 ## Archiwum petycji (A)
 
-| Wymaganie | Status | Stan |
-|---|---|---|
-| Parametr „Archiwum” przy petycji | Brak | — |
-| Strona petycji: sekcje AKTUALNE (3 pierwsze wyróżnione) i ARCHIWUM, wyszukiwarka i paginacja bez zmian | Brak | opis dotyczy `amnesty.org.pl/petycje/` i szablonu „Petition Index”, którego nie ma w tym repozytorium |
-| Petycja archiwalna: komunikat „Liczba zebranych podpisów: X. Dziękujemy za udział w akcji!” zamiast formularza | Brak | — |
+**Poza zakresem tego repozytorium** — **Decyzja (2026-10-14):** wymaganie dotyczy głównej strony amnesty.org.pl (`/petycje/`, szablon „Petition Index”), nie strony Maratonu. Zachowane tu wyłącznie jako zapis z briefu:
 
-**Otwarta kwestia:** czy to wymaganie dotyczy tego projektu (strona maratonu, plugin `amnesty-petitions-mk`), czy głównej strony amnesty.org.pl w innym repozytorium.
+- parametr „Archiwum” przy petycji;
+- strona `/petycje/`: sekcje AKTUALNE (3 pierwsze wyróżnione) i ARCHIWUM, wyszukiwarka i paginacja bez zmian;
+- petycja archiwalna: komunikat „Liczba zebranych podpisów: X. Dziękujemy za udział w akcji!” zamiast formularza.
 
 ## Usterki wykryte przy weryfikacji
 
@@ -115,7 +113,7 @@ Strona główna = strona ID 15 „Maraton Pisania Listów”.
 
 | Temat | Ustalenie | Status |
 |---|---|---|
-| Archiwum petycji | prawdopodobnie dotyczy amnesty.org.pl, nie tego projektu | **Otwarte** — właściciel projektu weryfikuje |
+| Archiwum petycji | dotyczy amnesty.org.pl, nie tego projektu | **Decyzja** — poza zakresem |
 | Zakres dat licznika wydarzeń | ustawiany **globalnie** w kokpicie (jedno ustawienie dla edycji) | **Decyzja** |
 | „Podpisz wszystkie” | podpisuje **tylko tegoroczne** petycje | **Decyzja** |
 | Definicja „tegorocznych” | petycje z globalnego zakresu dat edycji ustawianego w kokpicie (ten sam zakres co dla licznika wydarzeń); dotyczy „Podpisz wszystkie” i licznika listów | **Decyzja** |
@@ -139,7 +137,7 @@ Status: **Decyzja** (zaakceptowane 2026-10-14; zaimplementowane w zmianach roboc
 
 ## Otwarte pytania do zespołu
 
-1. Archiwum petycji — potwierdzenie, że dotyczy amnesty.org.pl.
+1. ~~Archiwum petycji~~ — potwierdzone: dotyczy amnesty.org.pl (poza zakresem).
 2. ~~Data publikacji czy osobne pole „edycja”?~~ — **Decyzja (2026-10-14):** data publikacji petycji / utworzenia wydarzenia.
 3. ~~Akceptacja propozycji formularza rejestracji~~ — zaakceptowano 2026-10-14.
 4. Miniatury akcji — czy zdjęcie i tytuł mają być nadpisywane ręcznie w widgecie?

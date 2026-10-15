@@ -70,7 +70,7 @@ Szczegóły i ograniczenia buildu: [hello-elementor-child.md](hello-elementor-ch
 
 ## Dostępne kontrole
 
-Projekt nie ma testów automatycznych, lintera ani CI. Tanie kontrole stosowane w projekcie (uruchamiane z katalogu `wp-content`):
+Testy integracyjne, UI i obciążeniowe są w [`tests/`](../tests/README.md) (od 2026-10-14; bez CI, uruchamiane ręcznie). Projekt nie ma lintera. Tanie kontrole stosowane w projekcie (uruchamiane z katalogu `wp-content`):
 
 ```bash
 # składnia PHP własnego kodu

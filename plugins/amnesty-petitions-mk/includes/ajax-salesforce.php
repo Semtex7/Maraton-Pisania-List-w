@@ -28,6 +28,19 @@ function amnesty_petition_handle_submission() {
         wp_send_json_error( 'Błąd bezpieczeństwa formularza.' );
     }
 
+    // Bot protection (includes/form-protection.php). Bots get a normal "success" so they learn nothing.
+    $protection = amnesty_check_petition_submission();
+    if ( 'bot' === $protection ) {
+        wp_send_json_success( 'Sukces!' );
+    } elseif ( '' !== $protection ) {
+        wp_send_json_error( $protection );
+    }
+
+    // Required consent is also checked server-side (the HTML "required" can be bypassed)
+    if ( empty( $_POST['rodo_consent'] ) ) {
+        wp_send_json_error( 'Zaznacz wymaganą zgodę na przetwarzanie danych.' );
+    }
+
     global $wpdb;
     $table_name = $wpdb->prefix . 'amnesty_signatures';
 
@@ -96,19 +109,13 @@ function amnesty_petition_handle_submission() {
 
         if ( $inserted ) {
             $success_count++;
-            $record_id = $wpdb->insert_id; 
-            $topic_name = get_post_meta( $petition_id, '_amnesty_petition_topic_name', true );
-            
-            // Push to Salesforce if topic exists
-            if ( ! empty( $topic_name ) ) {
-                $sf_success = amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $phone, $city, $topic_name );
-                if ( $sf_success ) {
-                    $wpdb->update( $table_name, array( 'salesforce_synced' => 1 ), array( 'id' => $record_id ) );
-                } else {
-                    amnesty_custom_log( "SF Sync Failed for email: $email on topic: $topic_name" );
-                }
-            }
         }
+    }
+
+    // Salesforce sync runs in the background (includes/salesforce-sync.php), so the visitor does not
+    // wait for several API calls per signed petition.
+    if ( $success_count > 0 ) {
+        amnesty_sf_schedule_sync_soon();
     }
 
     if ( $already_signed_main && $success_count === 0 && ! $sign_all ) {
@@ -152,7 +159,9 @@ function amnesty_sf_run_query( $query, $instance_url, $access_token ) {
     return ( is_object( $body ) && isset( $body->records ) && is_array( $body->records ) && count( $body->records ) > 0 ) ? $body->records[0] : false;
 }
 
-function amnesty_sf_create_record( $object_name, $data, $instance_url, $access_token ) {
+// $duplicate_is_success: a DUPLICATE_VALUE error counts as success (e.g. TopicAssignment that already
+// exists after a retried sync) and returns the string 'DUPLICATE'.
+function amnesty_sf_create_record( $object_name, $data, $instance_url, $access_token, $duplicate_is_success = false ) {
     $response = wp_remote_post( 
         $instance_url . '/services/data/v58.0/sobjects/' . $object_name . '/', 
         array( 
@@ -172,6 +181,9 @@ function amnesty_sf_create_record( $object_name, $data, $instance_url, $access_t
     
     // Check if Salesforce returned an array of error objects
     if ( is_array( $body ) && isset( $body[0]->errorCode ) ) {
+        if ( $duplicate_is_success && 'DUPLICATE_VALUE' === $body[0]->errorCode ) {
+            return 'DUPLICATE';
+        }
         amnesty_custom_log( 'Salesforce Create API Array Error (' . $object_name . '): ' . wp_remote_retrieve_body( $response ) );
         return false;
     }
@@ -225,18 +237,64 @@ function amnesty_sf_get_access_token() {
     return array( $instance_url, $token_body->access_token );
 }
 
-function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $phone, $city, $topic_name ) {
-    $auth = amnesty_sf_get_access_token();
+// "j***@example.org" — log entries must not contain full e-mail addresses
+function amnesty_mask_email( $email ) {
+    $parts = explode( '@', (string) $email, 2 );
+    return ( $parts[0] !== '' ? mb_substr( $parts[0], 0, 1 ) : '' ) . '***' . ( isset( $parts[1] ) ? '@' . $parts[1] : '' );
+}
+
+// Updates fields of an existing record (PATCH). Returns true on success (HTTP 204).
+function amnesty_sf_update_record( $object_name, $record_id, $data, $instance_url, $access_token ) {
+    $response = wp_remote_request(
+        $instance_url . '/services/data/v58.0/sobjects/' . $object_name . '/' . rawurlencode( $record_id ),
+        array(
+            'method'  => 'PATCH',
+            'headers' => array( 'Authorization' => 'Bearer ' . $access_token, 'Content-Type' => 'application/json' ),
+            'body'    => wp_json_encode( $data ),
+            'timeout' => 15,
+        )
+    );
+
+    if ( is_wp_error( $response ) ) {
+        amnesty_custom_log( 'Salesforce Update WP Error (' . $object_name . '): ' . $response->get_error_message() );
+        return false;
+    }
+
+    $code = (int) wp_remote_retrieve_response_code( $response );
+    if ( $code < 200 || $code >= 300 ) {
+        amnesty_custom_log( 'Salesforce Update API Error (' . $object_name . ', HTTP ' . $code . '): ' . wp_remote_retrieve_body( $response ) );
+        return false;
+    }
+
+    return true;
+}
+
+// Contact field (checkbox) that receives the marketing consent from the petition form.
+// Set in Petitions → Ustawienia → Salesforce API; empty = consent is not sent.
+function amnesty_sf_consent_field() {
+    $field = (string) get_option( 'amnesty_sf_consent_field', 'Newsletter_Subscribe__c' );
+    return preg_match( '/^[A-Za-z][A-Za-z0-9_]*$/', $field ) ? $field : '';
+}
+
+// $auth: array( instance_url, access_token ) reused by the background sync; fetched when null.
+// $consent: marketing consent given in the form (sets the consent field to true; never to false,
+// because an unticked box is not a withdrawal of an earlier consent).
+// Topic and Contact IDs are remembered for the rest of the PHP request (one batch).
+function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $phone, $city, $topic_name, $auth = null, $consent = 0 ) {
+    static $topic_ids = array(), $contact_ids = array(), $consent_sent = array();
+
+    if ( null === $auth ) {
+        $auth = amnesty_sf_get_access_token();
+    }
     if ( ! $auth ) {
         return false;
     }
     list( $instance_url, $access_token ) = $auth;
 
     // 1. Check if the Topic exists in Salesforce
-    $topic = amnesty_sf_run_query( "SELECT Id FROM Topic WHERE Name = '" . esc_sql( $topic_name ) . "' LIMIT 1", $instance_url, $access_token );
-    
+    $topic    = isset( $topic_ids[ $topic_name ] ) ? (object) array( 'Id' => $topic_ids[ $topic_name ] ) : amnesty_sf_run_query( "SELECT Id FROM Topic WHERE Name = '" . esc_sql( $topic_name ) . "' LIMIT 1", $instance_url, $access_token );
     $topic_id = false;
-    
+
     if ( $topic ) {
         // Topic exists, grab its ID
         $topic_id = $topic->Id;
@@ -255,8 +313,11 @@ function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $p
         }
     }
 
+    $topic_ids[ $topic_name ] = $topic_id;
+
     // 2. Query for Contact, create if missing
-    $contact = amnesty_sf_run_query( "SELECT Id FROM Contact WHERE Email = '" . esc_sql( $email ) . "' LIMIT 1", $instance_url, $access_token );
+    $email_key = strtolower( $email );
+    $contact   = isset( $contact_ids[ $email_key ] ) ? (object) array( 'Id' => $contact_ids[ $email_key ] ) : amnesty_sf_run_query( "SELECT Id FROM Contact WHERE Email = '" . esc_sql( $email ) . "' LIMIT 1", $instance_url, $access_token );
     
     if ( $contact ) {
         $contact_id = $contact->Id;
@@ -270,23 +331,36 @@ function amnesty_sf_push_signature_to_topic( $first_name, $last_name, $email, $p
     }
     
     if ( ! $contact_id ) {
-        amnesty_custom_log( 'Salesforce Error: Failed to find or create Contact for email: ' . $email );
+        amnesty_custom_log( 'Salesforce Error: Failed to find or create Contact for email: ' . amnesty_mask_email( $email ) );
         return false;
     }
+    $contact_ids[ $email_key ] = $contact_id;
 
     // 3. Assign Contact to the Topic using the ID (either found or newly created)
-    $assignment = amnesty_sf_create_record( 
-        'TopicAssignment', 
-        array( 'TopicId' => $topic_id, 'EntityId' => $contact_id ), 
-        $instance_url, 
-        $access_token 
+    $assignment = amnesty_sf_create_record(
+        'TopicAssignment',
+        array( 'TopicId' => $topic_id, 'EntityId' => $contact_id ),
+        $instance_url,
+        $access_token,
+        true // Already assigned (retry) is fine
     );
     
     if ( ! $assignment ) {
-         amnesty_custom_log( 'Salesforce Error: Failed to create TopicAssignment for email: ' . $email );
+         amnesty_custom_log( 'Salesforce Error: Failed to create TopicAssignment for email: ' . amnesty_mask_email( $email ) );
          return false;
     }
-    
+
+    // 4. Marketing consent: once per Contact per batch. A failure (e.g. wrong field name in the settings)
+    // is logged but does not fail the signature sync.
+    $consent_field = amnesty_sf_consent_field();
+    if ( $consent && '' !== $consent_field && empty( $consent_sent[ $contact_id ] ) ) {
+        if ( amnesty_sf_update_record( 'Contact', $contact_id, array( $consent_field => true ), $instance_url, $access_token ) ) {
+            $consent_sent[ $contact_id ] = true;
+        } else {
+            amnesty_custom_log( 'Salesforce Error: consent field ' . $consent_field . ' not updated for Contact ' . $contact_id );
+        }
+    }
+
     return true;
 }
 

@@ -76,6 +76,12 @@ document.addEventListener('DOMContentLoaded', function() {
                 submitBtn.disabled = true; // Fizyczna blokada przycisku
             }
 
+            // Seconds since page load, checked server-side (bot protection, includes/form-protection.php)
+            const elapsedField = form.querySelector('[name="amnesty_elapsed"]');
+            if (elapsedField) {
+                elapsedField.value = (performance.now() / 1000).toFixed(1);
+            }
+
             const formData = new FormData(form);
             formData.append('action', 'submit_amnesty_petition');
             formData.append('amnesty_sign_nonce', amnestyAjax.nonce);

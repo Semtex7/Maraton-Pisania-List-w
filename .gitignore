@@ -11,6 +11,16 @@
 !docs/
 !docs/**
 
+# Keep editor agent definitions shared by the team.
+!.github/
+!.github/agents/
+!.github/agents/**
+
+# Keep tests (screenshots are local output).
+!tests/
+!tests/**
+tests/ui/shots/
+
 # Keep all plugins.
 !plugins/
 !plugins/**
@@ -27,5 +37,10 @@ themes/*
 **/node_modules/
 **/node_modules/**
 
-# Never commit plugin logs (they may contain personal data).
+# Never commit logs (they may contain personal data).
 **/amnesty-debug.log
+**/*.log
+
+# Local OS/editor junk.
+**/.DS_Store
+**/Thumbs.db

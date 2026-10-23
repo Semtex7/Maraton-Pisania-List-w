@@ -122,9 +122,9 @@ function handle_event_submission() {
             // Clean URL from existing hashes before appending new ones
             $clean_url = explode('#', $return_url)[0];
 
-            // The hash opens the "My events" tab (CSS ID of the Elementor tab, see KK.openTabFromHash);
-            // [my_events] shows the confirmation for ?added=1
-            $redirect_url = add_query_arg('added', '1', $clean_url) . '#zakladka-moje-wydarzenia';
+            // [my_events] shows the confirmation for ?added=1; the hash opens the tab that contains it
+            // (KK.openTabFromHash), whatever the tab IDs set in Elementor are
+            $redirect_url = add_query_arg('added', '1', $clean_url) . '#ajax-main-messages';
             
             wp_safe_redirect($redirect_url);
             exit; 
@@ -146,6 +146,9 @@ function render_event_form() {
 
     ob_start();
 
+    // Anchor: after a validation error the page reopens on this tab (KK.openTabFromHash)
+    echo '<div id="dodaj-wydarzenie-form"></div>';
+
     // The success message (?added=1) is shown by [my_events]
 
     // Display validation errors
@@ -161,7 +164,7 @@ function render_event_form() {
     $val_end    = isset($_POST['end_datetime']) ? esc_attr($_POST['end_datetime']) : '';
 
     ?>
-    <form action="" method="post" class="new-event-form">
+    <form action="#dodaj-wydarzenie-form" method="post" class="new-event-form">
         <?php wp_nonce_field('save_event_action', 'event_nonce'); ?>
 
         <div class="form-section">

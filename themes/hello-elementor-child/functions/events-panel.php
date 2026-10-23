@@ -287,7 +287,7 @@ function render_my_events_shortcode() {
                     }
 
                     // Display the "Materials Ordered" status badge
-                    echo '<span class="btn-action status-ordered" style="background-color: #f1c40f; title="' . esc_attr($delivery_info) . '">';
+                    echo '<span class="btn-action status-ordered" style="background-color: #f1c40f;" title="' . esc_attr($delivery_info) . '">';
                     echo esc_html__('Materiały zamówione', 'amnestympl');
                     
                     // Append small text showing the delivery address/point underneath the main badge text

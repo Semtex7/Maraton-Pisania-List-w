@@ -154,9 +154,8 @@ function handle_user_registration() {
         $email    = isset($_POST['user_email']) ? sanitize_email( wp_unslash($_POST['user_email']) ) : '';
         $password = isset($_POST['user_pass']) ? (string) wp_unslash($_POST['user_pass']) : '';
 
-        // Consents: marathon consent is required, Amnesty marketing consent is optional (GDPR art. 7(4))
+        // Required: acceptance of the Terms of Service (stored under the consent_marathon meta key)
         $consent_marathon = isset($_POST['consent_marathon']) ? 1 : 0;
-        $consent_amnesty  = isset($_POST['consent_amnesty']) ? 1 : 0;
 
         // Validation
         if ( empty($email) || '' === $password ) {
@@ -165,10 +164,10 @@ function handle_user_registration() {
             $registration_error = 'Podaj poprawny adres e-mail.';
         } elseif ( email_exists($email) ) {
             $registration_error = 'Ten adres e-mail jest już zajęty. Przejdź do logowania.';
-        } elseif ( strlen($password) < 8 ) {
-            $registration_error = 'Hasło musi mieć minimum 8 znaków.';
+        } elseif ( mb_strlen($password) < 8 || ! preg_match('/\d/', $password) || ! preg_match('/[^\p{L}\d\s]/u', $password) ) {
+            $registration_error = 'Hasło musi mieć minimum 8 znaków, w tym co najmniej jedną cyfrę i jeden znak specjalny.';
         } elseif ( ! $consent_marathon ) {
-            $registration_error = 'Zaakceptuj wymaganą zgodę na przetwarzanie danych, aby się zarejestrować.';
+            $registration_error = 'Zaakceptuj Regulamin Serwisu, aby się zarejestrować.';
         } else {
             // Username is not shown to users (login is by e-mail), so it is generated from the address
             $user_id = wp_create_user( maraton_generate_username($email), $password, $email );
@@ -179,10 +178,6 @@ function handle_user_registration() {
                 // Save consents with the time they were given (accountability)
                 update_user_meta($user_id, 'consent_marathon', 1);
                 update_user_meta($user_id, 'consent_marathon_date', $now);
-                update_user_meta($user_id, 'consent_amnesty', $consent_amnesty);
-                if ( $consent_amnesty ) {
-                    update_user_meta($user_id, 'consent_amnesty_date', $now);
-                }
 
                 // Account stays inactive until the e-mail link is clicked
                 $page_url = get_permalink( get_queried_object_id() );
@@ -311,7 +306,13 @@ function render_registration_shortcode() {
     }
 
     $val_email = isset( $_POST['user_email'] ) ? esc_attr( wp_unslash( $_POST['user_email'] ) ) : '';
-    $val_consent_amnesty = ! empty( $_POST['consent_amnesty'] );
+
+    // Links set in Petitions → Ustawienia → Linki; the information clause falls back to the WP privacy page
+    $link_terms  = get_option( 'amnesty_link_terms', '' );
+    $link_clause = get_option( 'amnesty_link_info_clause', '' );
+    if ( ! $link_clause ) {
+        $link_clause = get_privacy_policy_url();
+    }
 
     ob_start();
 
@@ -319,7 +320,7 @@ function render_registration_shortcode() {
     <div class="event-auth-panel event-registration-panel">
         <h3>Rejestracja</h3>
         <?php if ( ! empty($registration_error) ) : ?>
-            <div class="register-error" style="color: #dc0032; margin-bottom: 15px;"><strong>Błąd rejestracji:</strong> <?php echo esc_html( $registration_error ); ?></div>
+            <div class="register-error" role="alert"><strong>Błąd rejestracji:</strong> <?php echo esc_html( $registration_error ); ?></div>
         <?php endif; ?>
 
     <form method="post" action="" class="new-event-form">
@@ -327,32 +328,30 @@ function render_registration_shortcode() {
         <?php maraton_form_protection_fields(); ?>
 
         <p class="login-email">
-            <label for="reg_user_email">Adres e-mail <span style="color:red;">*</span></label>
+            <label for="reg_user_email">Adres e-mail <span class="required">*</span></label>
             <input type="email" name="user_email" id="reg_user_email" autocomplete="email" value="<?php echo $val_email; ?>" required>
         </p>
 
-        <p class="login-password">
-            <label for="reg_user_pass">Hasło <span style="color:red;">*</span></label>
-            <input type="password" name="user_pass" id="reg_user_pass" autocomplete="new-password" minlength="8" required>
-            <span style="font-size: 0.85em; color: #555;">Minimum 8 znaków.</span>
-            <label style="display: flex; gap: 8px; align-items: center; cursor: pointer; font-size: 0.9em;">
-                <input type="checkbox" onchange="document.getElementById('reg_user_pass').type = this.checked ? 'text' : 'password';">
-                Pokaż hasło
-            </label>
-        </p>
+        <div class="login-password">
+            <label for="reg_user_pass">Hasło <span class="required">*</span></label>
+            <input type="password" name="user_pass" id="reg_user_pass" autocomplete="new-password" minlength="8" required aria-describedby="reg_user_pass_hint"
+                pattern="(?=.*\d)(?=.*[^\p{L}\d\s]).{8,}" title="Minimum 8 znaków, w tym cyfra i znak specjalny">
+            <div class="password-meta">
+                <span class="field-hint" id="reg_user_pass_hint">Minimum 8 znaków, w tym cyfra i znak specjalny (np. ! ? @ #)</span>
+                <label class="show-password">
+                    <input type="checkbox" onchange="document.getElementById('reg_user_pass').type = this.checked ? 'text' : 'password';">
+                    Pokaż hasło
+                </label>
+            </div>
+        </div>
 
-        <div class="registration-consents" style="margin: 20px 0; font-size: 0.9em; line-height: 1.4;">
-            <p>
-                <label style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-                    <input type="checkbox" name="consent_marathon" value="1" required style="margin-top: 4px;">
-                    <span>Wyrażam zgodę na przetwarzanie moich danych osobowych w celu rejestracji i organizacji Maratonu Pisania Listów. <span style="color:red;">*</span></span>
-                </label>
-            </p>
-            <p>
-                <label style="display: flex; gap: 8px; align-items: flex-start; cursor: pointer;">
-                    <input type="checkbox" name="consent_amnesty" value="1" <?php checked( $val_consent_amnesty ); ?> style="margin-top: 4px;">
-                    <span>Chcę otrzymywać informacje na temat innych akcji, kampanii i sposobów wspierania Amnesty International.</span>
-                </label>
+        <div class="registration-consents">
+            <label class="consent-label">
+                <input type="checkbox" name="consent_marathon" value="1" required>
+                <span>Potwierdzam zapoznanie się z treścią <a href="<?php echo esc_url( $link_terms ? $link_terms : '#' ); ?>" target="_blank" rel="noopener">Regulaminu Serwisu</a> i akceptuję jego postanowienia. <span class="required">*</span></span>
+            </label>
+            <p class="consent-note">
+                Szczegółowe informacje dotyczące przetwarzania Twoich danych osobowych w związku z rejestracją konta i korzystaniem z Serwisu znajdziesz w <a href="<?php echo esc_url( $link_clause ? $link_clause : '#' ); ?>" target="_blank" rel="noopener">Klauzuli informacyjnej</a>.
             </p>
         </div>
         
@@ -485,7 +484,7 @@ function maraton_export_organizer_consents( $email, $page = 1 ) {
 
     $data = array();
     foreach ( array(
-        'consent_marathon' => 'Zgoda na przetwarzanie danych (organizacja Maratonu)',
+        'consent_marathon' => 'Akceptacja Regulaminu Serwisu',
         'consent_amnesty'  => 'Zgoda na informacje o akcjach Amnesty International',
     ) as $key => $label ) {
         $value = get_user_meta( $user->ID, $key, true );

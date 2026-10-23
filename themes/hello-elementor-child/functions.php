@@ -1,5 +1,5 @@
 <?php
-define('MARATON_VERSION', '1.2');
+define('MARATON_VERSION', '1.4');
 
 // Include classes
 require_once get_stylesheet_directory() . '/classes/elementor_controls.php';

@@ -45,7 +45,8 @@ function maraton_get_events_map_data() {
                 $start = maraton_get_event_datetime($post_id, 'start');
 
                 $map_points[] = array(
-                    'title'      => get_the_title(),
+                    // Plain text: the map script escapes it (get_the_title() returns HTML entities)
+                    'title'      => html_entity_decode( get_the_title(), ENT_QUOTES | ENT_HTML5, 'UTF-8' ),
                     'venue'      => (string) get_post_meta($post_id, 'nazwa_lokalu', true),
                     'address'    => get_post_meta($post_id, 'ulica', true) . ', ' . get_post_meta($post_id, 'miejscowosc', true),
                     'dates'      => $start ? maraton_format_event_dates($start, maraton_get_event_datetime($post_id, 'end')) : '',

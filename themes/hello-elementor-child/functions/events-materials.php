@@ -28,6 +28,77 @@ function register_materials_order_cpt() {
     register_post_type( 'material_order', $args );
 }
 
+// Package sizes: the stored value (key) stays fixed, name and description are edited in
+// Zamówienia → Opisy pakietów (options maraton_package_{slug}_label / _desc)
+function maraton_package_defaults() {
+    return array(
+        'Duża'    => array( 'slug' => 'duza',    'label' => 'DUŻY',  'desc' => '5 plakatów, 4 karty postaci, wzory listów' ),
+        'Średnia' => array( 'slug' => 'srednia', 'label' => 'ŚREDNI', 'desc' => '5 plakatów, 4 karty postaci, wzory listów' ),
+        'Mała'    => array( 'slug' => 'mala',    'label' => 'MAŁY',  'desc' => '5 plakatów, 4 karty postaci, wzory listów' ),
+    );
+}
+
+function maraton_get_packages() {
+    $packages = array();
+    foreach ( maraton_package_defaults() as $value => $package ) {
+        $packages[ $value ] = array(
+            'slug'  => $package['slug'],
+            // An emptied name falls back to the default; the description may be left empty on purpose
+            'label' => get_option( 'maraton_package_' . $package['slug'] . '_label', '' ) ?: $package['label'],
+            'desc'  => get_option( 'maraton_package_' . $package['slug'] . '_desc', $package['desc'] ),
+        );
+    }
+    return $packages;
+}
+
+add_action('admin_init', 'maraton_register_package_settings');
+
+function maraton_register_package_settings() {
+    foreach ( maraton_package_defaults() as $package ) {
+        register_setting( 'maraton_packages_group', 'maraton_package_' . $package['slug'] . '_label', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+        register_setting( 'maraton_packages_group', 'maraton_package_' . $package['slug'] . '_desc', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+    }
+}
+
+add_action('admin_menu', 'maraton_register_packages_page');
+
+function maraton_register_packages_page() {
+    add_submenu_page(
+        'edit.php?post_type=material_order',
+        __('Opisy pakietów', 'amnestympl'),
+        __('Opisy pakietów', 'amnestympl'),
+        'manage_options',
+        'maraton_packages',
+        'maraton_render_packages_page'
+    );
+}
+
+function maraton_render_packages_page() {
+    ?>
+    <div class="wrap">
+        <h1><?php esc_html_e('Opisy pakietów', 'amnestympl'); ?></h1>
+        <p><?php esc_html_e('Nazwy i opisy pakietów widoczne w formularzu „Zamów materiały” w panelu organizatora.', 'amnestympl'); ?></p>
+        <form method="post" action="options.php">
+            <?php settings_fields('maraton_packages_group'); ?>
+            <table class="form-table">
+                <?php foreach ( maraton_get_packages() as $value => $package ) : ?>
+                    <tr>
+                        <th scope="row"><?php echo esc_html( sprintf( __('Pakiet „%s”', 'amnestympl'), $value ) ); ?></th>
+                        <td>
+                            <p><label><?php esc_html_e('Nazwa', 'amnestympl'); ?><br>
+                                <input type="text" class="regular-text" name="maraton_package_<?php echo esc_attr($package['slug']); ?>_label" value="<?php echo esc_attr($package['label']); ?>"></label></p>
+                            <p><label><?php esc_html_e('Opis (zawartość pakietu)', 'amnestympl'); ?><br>
+                                <textarea class="large-text" rows="2" name="maraton_package_<?php echo esc_attr($package['slug']); ?>_desc"><?php echo esc_textarea($package['desc']); ?></textarea></label></p>
+                        </td>
+                    </tr>
+                <?php endforeach; ?>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
+}
+
 global $order_form_error;
 $order_form_error = '';
 
@@ -105,9 +176,11 @@ function handle_materials_order_submission() {
                 update_post_meta($post_id, 'adres_miasto', $address_city);
             }
 
+            // Back to the order form: the hash opens the panel tab that contains it (KK.openTabFromHash)
             $return_url = wp_get_referer() ? wp_get_referer() : get_permalink();
-            wp_safe_redirect(add_query_arg('order_added', '1', $return_url));
-            exit; 
+            $return_url = explode('#', $return_url)[0];
+            wp_safe_redirect(add_query_arg('order_added', '1', $return_url) . '#zamow-materialy');
+            exit;
         }
     }
 }
@@ -124,6 +197,9 @@ function render_materials_order_form() {
     }
 
     ob_start();
+
+    // Anchor for the redirect after ordering (opens this tab in the panel)
+    echo '<div id="zamow-materialy"></div>';
 
     $current_user_id = get_current_user_id();
     $events_args = array(
@@ -147,7 +223,7 @@ function render_materials_order_form() {
     }
 
     ?>
-    <form action="" method="post" class="new-event-form order-materials-form">
+    <form action="#zamow-materialy" method="post" class="new-event-form order-materials-form">
         <?php wp_nonce_field('save_order_action', 'order_nonce'); ?>
 
         <div class="form-section">
@@ -166,30 +242,18 @@ function render_materials_order_form() {
 
         <h3 class="form-section-title uppercase-title"><?php esc_html_e('Rozmiar pakietu', 'amnestympl'); ?></h3>
         <div class="form-section custom-radio-list">
+            <?php $first = true; foreach ( maraton_get_packages() as $value => $package ) : ?>
             <label class="custom-radio-item">
-                <input type="radio" name="package_size" value="Duża" required>
+                <input type="radio" name="package_size" value="<?php echo esc_attr($value); ?>" <?php echo $first ? 'required' : ''; ?>>
                 <span class="radio-custom-circle"></span>
                 <div class="radio-text">
-                    <span class="radio-main">DUŻY</span>
-                    <span class="radio-sub">5 plakatów, 4 karty postaci, wzory listów</span>
+                    <span class="radio-main"><?php echo esc_html($package['label']); ?></span>
+                    <?php if ( '' !== $package['desc'] ) : ?>
+                        <span class="radio-sub"><?php echo esc_html($package['desc']); ?></span>
+                    <?php endif; ?>
                 </div>
             </label>
-            <label class="custom-radio-item">
-                <input type="radio" name="package_size" value="Średnia">
-                <span class="radio-custom-circle"></span>
-                <div class="radio-text">
-                    <span class="radio-main">ŚREDNI</span>
-                    <span class="radio-sub">5 plakatów, 4 karty postaci, wzory listów</span>
-                </div>
-            </label>
-            <label class="custom-radio-item">
-                <input type="radio" name="package_size" value="Mała">
-                <span class="radio-custom-circle"></span>
-                <div class="radio-text">
-                    <span class="radio-main">MAŁY</span>
-                    <span class="radio-sub">5 plakatów, 4 karty postaci, wzory listów</span>
-                </div>
-            </label>
+            <?php $first = false; endforeach; ?>
         </div>
 
         <div class="form-section split-row">
@@ -433,8 +497,9 @@ function set_custom_material_order_columns($columns) {
     $new_columns = array();
     $new_columns['cb']      = $columns['cb'];
     $new_columns['title']   = __('Nazwa zamówienia', 'amnestympl');
+    $new_columns['package'] = __('Pakiet', 'amnestympl');
     $new_columns['carrier'] = __('Przewoźnik', 'amnestympl');
-    $new_columns['locker']  = __('Punkt odbioru', 'amnestympl');
+    $new_columns['locker']  = __('Dostawa (punkt / adres)', 'amnestympl');
     $new_columns['status']  = __('Status', 'amnestympl');
     $new_columns['date']    = $columns['date'];
     
@@ -448,8 +513,16 @@ function custom_material_order_column($column, $post_id) {
         case 'carrier':
             echo esc_html(get_post_meta($post_id, 'przewoznik', true));
             break;
+        case 'package':
+            echo esc_html(get_post_meta($post_id, 'rozmiar_paczki', true));
+            break;
         case 'locker':
-            echo '<strong>' . esc_html(get_post_meta($post_id, 'punkt_odbioru_id', true)) . '</strong>';
+            if ( 'Kurier DPD' === get_post_meta($post_id, 'przewoznik', true) ) {
+                echo esc_html(get_post_meta($post_id, 'adres_ulica', true)) . '<br>'
+                    . esc_html(trim(get_post_meta($post_id, 'adres_kod', true) . ' ' . get_post_meta($post_id, 'adres_miasto', true)));
+            } else {
+                echo '<strong>' . esc_html(get_post_meta($post_id, 'punkt_odbioru_id', true)) . '</strong>';
+            }
             break;
         case 'status':
             $status = get_post_meta($post_id, 'status_zamowienia', true);

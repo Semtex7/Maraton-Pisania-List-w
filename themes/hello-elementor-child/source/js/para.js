@@ -28,15 +28,35 @@ jQuery(document).ready(function ($) {
                 this.eventDateLimits();
             },
 
-            // Elementor Nested Tabs ignore the URL hash. The hash is the tab's "CSS ID" set in Elementor
-            // (e.g. /panel/#zakladka-moje-wydarzenia) — Elementor puts it on the tab title button.
+            // Elementor Nested Tabs ignore the URL hash. The hash can be:
+            // - the tab's "CSS ID" set in Elementor (Elementor puts it on the tab title button), also with the
+            //   old "zakladka-" prefix (e.g. /panel/#zakladka-moje-wydarzenia opens the tab "moje-wydarzenia"),
+            // - the ID of any element inside a tab (e.g. #ajax-main-messages, #zamow-materialy): the tab that
+            //   contains it is opened, so redirects do not depend on the tab IDs set in Elementor.
             openTabFromHash: function () {
+                function findTabTitle(id) {
+                    let el = document.getElementById(id) || document.getElementById(id.replace(/^zakladka-/, ''));
+                    if (!el) return null;
+                    if (el.classList.contains('e-n-tab-title')) return el;
+
+                    let panel = el.closest('[role="tabpanel"]');
+                    let titleId = panel ? panel.getAttribute('aria-labelledby') : '';
+                    return titleId ? document.getElementById(titleId) : null;
+                }
+
                 function openTab() {
                     let hash = window.location.hash.slice(1);
                     if (!hash) return;
-                    let tab = document.getElementById(decodeURIComponent(hash));
-                    if (tab && tab.classList.contains('e-n-tab-title') && tab.getAttribute('aria-selected') !== 'true') {
+                    let target = decodeURIComponent(hash);
+                    let tab = findTabTitle(target);
+                    if (tab && tab.getAttribute('aria-selected') !== 'true') {
                         tab.click();
+                    }
+
+                    // Bring the form / confirmation into view instead of leaving the page at the top
+                    let el = document.getElementById(target);
+                    if (el && !el.classList.contains('e-n-tab-title')) {
+                        setTimeout(function () { el.scrollIntoView({ behavior: 'smooth', block: 'start' }); }, 100);
                     }
                 }
 
@@ -48,10 +68,12 @@ jQuery(document).ready(function ($) {
                 }
                 window.addEventListener('hashchange', openTab);
 
-                // One-time confirmation after adding an event: drop ?added=1 so a refresh doesn't show it again
+                // One-time confirmations after adding an event / ordering materials: drop ?added=1 / ?order_added=1
+                // so a refresh doesn't show them again
                 let url = new URL(window.location.href);
-                if (url.searchParams.has('added')) {
+                if (url.searchParams.has('added') || url.searchParams.has('order_added')) {
                     url.searchParams.delete('added');
+                    url.searchParams.delete('order_added');
                     window.history.replaceState(null, '', url.toString());
                 }
             },

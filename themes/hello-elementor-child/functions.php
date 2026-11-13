@@ -1,5 +1,5 @@
 <?php
-define('MARATON_VERSION', '1.4');
+define('MARATON_VERSION', '1.6');
 
 // Include classes
 require_once get_stylesheet_directory() . '/classes/elementor_controls.php';
@@ -18,6 +18,8 @@ $maraton_modules = array(
     'functions/events-reports.php',
     'functions/events-list.php',
     'functions/shortcodes.php',
+    'functions/complianz-overrides.php',
+    'functions/meta-pixel.php',
 );
 
 foreach ( $maraton_modules as $module ) {

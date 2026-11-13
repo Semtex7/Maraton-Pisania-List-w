@@ -208,23 +208,12 @@
         }
     }
 
+    // Look comes from the shared yellow button (components/_buttons.scss); only <button>-specific bits here
     .btn-yellow-block {
-        background-color: #ffff00;
-        color: #000;
-        border: none;
-        padding: 18px 40px;
-        font-size: 18px;
-        font-weight: 900;
+        margin-top: 20px;
+        border-radius: 0;
         text-transform: uppercase;
         cursor: pointer;
-        display: inline-block;
-        margin-top: 20px;
-        border-radius: 0; // Brak zaokrągleń według zdjęcia
-        transition: background-color 0.2s ease;
-
-        &:hover {
-            background-color: $color-dark;
-        }
     }
 }
 
@@ -260,6 +249,8 @@
                 display: flex;
                 align-items: center;
                 justify-content: space-between;
+                gap: 10px;
+                min-width: 0; // Long file names wrap instead of widening the grid cell
                 background: #f9f9f9;
                 padding: 10px 15px;
                 border: 1px solid #ddd;
@@ -277,6 +268,8 @@
                 .download-text {
                     font-weight: bold;
                     font-size: 14px;
+                    min-width: 0;
+                    overflow-wrap: anywhere;
                 }
 
                 // Yellow arrow icon
@@ -285,6 +278,7 @@
                     padding: 5px 10px;
                     border-radius: 50%;
                     font-weight: bold;
+                    flex-shrink: 0;
 
                     // Add downward arrow entity
                     &::after {

@@ -539,6 +539,84 @@ function custom_material_order_column($column, $post_id) {
     }
 }
 
+// 6. ADMIN: CSV EXPORT OF ORDERS
+
+add_action('manage_posts_extra_tablenav', 'maraton_orders_export_button');
+
+function maraton_orders_export_button($which) {
+    if ( 'top' !== $which || 'material_order' !== get_current_screen()->post_type ) {
+        return;
+    }
+    $url = wp_nonce_url(admin_url('admin-post.php?action=maraton_export_orders'), 'maraton_export_orders');
+    echo '<div class="alignleft actions"><a href="' . esc_url($url) . '" class="button">' . esc_html__('Eksportuj do CSV', 'amnestympl') . '</a></div>';
+}
+
+add_action('admin_post_maraton_export_orders', 'maraton_export_orders_csv');
+
+function maraton_export_orders_csv() {
+    if ( ! current_user_can('edit_posts') ) {
+        wp_die(esc_html__('Brak uprawnień.', 'amnestympl'), 403);
+    }
+    check_admin_referer('maraton_export_orders');
+
+    $statuses = array(
+        'oczekujace'   => 'Oczekujące',
+        'w_realizacji' => 'W realizacji',
+        'wyslane'      => 'Wysłane',
+        'anulowane'    => 'Anulowane',
+    );
+
+    $orders = get_posts(array(
+        'post_type'      => 'material_order',
+        'post_status'    => 'any',
+        'posts_per_page' => -1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ));
+
+    nocache_headers();
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="zamowienia-' . wp_date('Y-m-d') . '.csv"');
+
+    $out = fopen('php://output', 'w');
+    // BOM + semicolon so Polish Excel opens it with correct encoding and columns
+    fwrite($out, "\xEF\xBB\xBF");
+
+    // Values starting with these characters would be run as formulas by Excel
+    $safe = function ($value) {
+        $value = (string) $value;
+        return ( '' !== $value && in_array($value[0], array('=', '+', '-', '@'), true) ) ? "'" . $value : $value;
+    };
+
+    fputcsv($out, array('ID', 'Data', 'Nazwa zamówienia', 'Wydarzenie', 'Osoba kontaktowa', 'E-mail', 'Telefon', 'Pakiet', 'Przewoźnik', 'Punkt odbioru', 'Ulica', 'Kod pocztowy', 'Miasto', 'Status'), ';');
+
+    foreach ( $orders as $order ) {
+        $id       = $order->ID;
+        $event_id = get_post_meta($id, 'powiazane_wydarzenie_id', true);
+        $status   = get_post_meta($id, 'status_zamowienia', true) ?: 'oczekujace';
+
+        fputcsv($out, array_map($safe, array(
+            $id,
+            get_the_date('Y-m-d H:i', $order),
+            $order->post_title,
+            $event_id ? get_the_title($event_id) : '',
+            get_post_meta($id, 'osoba_kontaktowa', true),
+            get_post_meta($id, 'email', true),
+            get_post_meta($id, 'telefon', true),
+            get_post_meta($id, 'rozmiar_paczki', true),
+            get_post_meta($id, 'przewoznik', true),
+            get_post_meta($id, 'punkt_odbioru_id', true),
+            get_post_meta($id, 'adres_ulica', true),
+            get_post_meta($id, 'adres_kod', true),
+            get_post_meta($id, 'adres_miasto', true),
+            $statuses[ $status ] ?? $status,
+        )), ';');
+    }
+
+    fclose($out);
+    exit;
+}
+
 add_action('admin_menu', 'register_global_materials_page');
 
 function register_global_materials_page() {
@@ -560,17 +638,80 @@ function enqueue_media_uploader_scripts() {
 }
 
 function register_global_materials_settings() {
-    // Register settings for 3 categories, each with a title and up to 3 files
+    // Register settings for 3 categories, each with a title and any number of files
     for ( $c = 1; $c <= 3; $c++ ) {
         // Register category title
         register_setting('global_materials_group', 'global_mat_cat_' . $c . '_title');
-        
-        // Register up to 3 files per category
-        for ( $f = 1; $f <= 3; $f++ ) {
-            register_setting('global_materials_group', 'global_mat_cat_' . $c . '_file_' . $f . '_title');
-            register_setting('global_materials_group', 'global_mat_cat_' . $c . '_file_' . $f . '_url');
+
+        // Files: array of array( 'title' => ..., 'url' => ... )
+        register_setting('global_materials_group', 'global_mat_cat_' . $c . '_files', array(
+            'sanitize_callback' => 'sanitize_global_materials_files',
+        ));
+    }
+}
+
+// Keeps only rows with a URL, reindexed in the order shown in the form
+function sanitize_global_materials_files( $files ) {
+    $clean = array();
+
+    if ( ! is_array( $files ) ) {
+        return $clean;
+    }
+
+    foreach ( $files as $file ) {
+        $url = isset( $file['url'] ) ? esc_url_raw( trim( $file['url'] ) ) : '';
+        if ( '' === $url ) {
+            continue;
+        }
+        $clean[] = array(
+            'title' => isset( $file['title'] ) ? sanitize_text_field( $file['title'] ) : '',
+            'url'   => $url,
+        );
+    }
+
+    return $clean;
+}
+
+// Files of a category. Before the first save of the new list, reads the old fixed slots (3 per category).
+function get_global_materials_files( $c ) {
+    $files = get_option( 'global_mat_cat_' . $c . '_files', false );
+    if ( is_array( $files ) ) {
+        return $files;
+    }
+
+    $files = array();
+    for ( $f = 1; $f <= 3; $f++ ) {
+        $file_url = get_option( 'global_mat_cat_' . $c . '_file_' . $f . '_url' );
+        if ( ! empty( $file_url ) ) {
+            $files[] = array(
+                'title' => (string) get_option( 'global_mat_cat_' . $c . '_file_' . $f . '_title' ),
+                'url'   => $file_url,
+            );
         }
     }
+    return $files;
+}
+
+// One file row of the settings page; $i is the array index in the field names (or __INDEX__ in the template)
+function render_global_materials_file_row( $c, $i, $file_title = '', $file_url = '' ) {
+    $name = 'global_mat_cat_' . (int) $c . '_files[' . $i . ']';
+    ?>
+    <tr valign="top" class="material-row" style="border-top: 1px solid #eee;">
+        <th scope="row" class="material-row-th"><?php esc_html_e('Plik', 'amnestympl'); ?> #<span class="material-row-number"></span></th>
+        <td class="material-row-td">
+            <label class="material-field-label"><strong><?php esc_html_e('Nazwa wyświetlana:', 'amnestympl'); ?></strong></label>
+            <input type="text" name="<?php echo esc_attr($name); ?>[title]" value="<?php echo esc_attr($file_title); ?>" class="regular-text" style="margin-bottom: 15px;" />
+
+            <br>
+            <label class="material-field-label"><strong><?php esc_html_e('Plik:', 'amnestympl'); ?></strong></label>
+            <div class="material-input-group">
+                <input type="text" name="<?php echo esc_attr($name); ?>[url]" value="<?php echo esc_attr($file_url); ?>" class="large-text material-url-input" />
+                <button type="button" class="button upload-media-btn"><?php esc_html_e('Wybierz z biblioteki', 'amnestympl'); ?></button>
+                <button type="button" class="button btn-remove-media remove-material-row-btn"><?php esc_html_e('Usuń', 'amnestympl'); ?></button>
+            </div>
+        </td>
+    </tr>
+    <?php
 }
 
 // 6. ADMIN: GLOBAL MATERIALS SETTINGS PAGE
@@ -581,7 +722,7 @@ function render_global_materials_page() {
     ?>
     <div class="wrap">
         <h1><?php esc_html_e('Globalne Materiały do Pobrania', 'amnestympl'); ?></h1>
-        <p><?php esc_html_e('Uporządkuj pliki w trzech kategoriach. Zostaną one wyświetlone w osobnych ramkach w panelu użytkownika.', 'amnestympl'); ?></p>
+        <p><?php esc_html_e('Uporządkuj pliki w trzech kategoriach (dowolna liczba plików w każdej). Zostaną one wyświetlone w osobnych ramkach w panelu użytkownika.', 'amnestympl'); ?></p>
         
         <form method="post" action="options.php">
             <?php settings_fields('global_materials_group'); ?>
@@ -591,7 +732,7 @@ function render_global_materials_page() {
             for ( $c = 1; $c <= 3; $c++ ) : 
                 $cat_title = get_option('global_mat_cat_' . $c . '_title');
             ?>
-                <div style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; margin-bottom: 30px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
+                <div class="material-category" style="background: #fff; padding: 20px; border: 1px solid #ccd0d4; margin-bottom: 30px; box-shadow: 0 1px 1px rgba(0,0,0,.04);">
                     <h2 style="margin-top: 0; border-bottom: 2px solid #dc0032; padding-bottom: 10px;">
                         <?php esc_html_e('Kategoria', 'amnestympl'); ?> <?php echo (int)$c; ?>
                     </h2>
@@ -605,30 +746,26 @@ function render_global_materials_page() {
                         </tr>
                     </table>
 
-                    <table class="form-table admin-materials-table">
-                        <?php 
-                        // Loop through 3 files within the current category
-                        for ( $f = 1; $f <= 3; $f++ ) : 
-                            $file_title = get_option('global_mat_cat_' . $c . '_file_' . $f . '_title');
-                            $file_url   = get_option('global_mat_cat_' . $c . '_file_' . $f . '_url');
-                        ?>
-                        <tr valign="top" style="border-top: 1px solid #eee;">
-                            <th scope="row" class="material-row-th"><?php printf(esc_html__('Plik #%d', 'amnestympl'), $f); ?></th>
-                            <td class="material-row-td">
-                                <label class="material-field-label"><strong><?php esc_html_e('Nazwa wyświetlana:', 'amnestympl'); ?></strong></label>
-                                <input type="text" name="global_mat_cat_<?php echo (int)$c; ?>_file_<?php echo (int)$f; ?>_title" value="<?php echo esc_attr($file_title); ?>" class="regular-text" style="margin-bottom: 15px;" />
-                                
-                                <br>
-                                <label class="material-field-label"><strong><?php esc_html_e('Plik:', 'amnestympl'); ?></strong></label>
-                                <div class="material-input-group">
-                                    <input type="text" id="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>" name="global_mat_cat_<?php echo (int)$c; ?>_file_<?php echo (int)$f; ?>_url" value="<?php echo esc_attr($file_url); ?>" class="large-text" />
-                                    <button type="button" class="button upload-media-btn" data-target="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>"><?php esc_html_e('Wybierz z biblioteki', 'amnestympl'); ?></button>
-                                    <button type="button" class="button btn-remove-media clear-media-btn" data-target="mat_url_<?php echo (int)$c; ?>_<?php echo (int)$f; ?>"><?php esc_html_e('Usuń', 'amnestympl'); ?></button>
-                                </div>
-                            </td>
-                        </tr>
-                        <?php endfor; ?>
+                    <?php
+                    // Files of the current category (no limit); an empty category starts with one empty row
+                    $files = get_global_materials_files( $c );
+                    if ( empty( $files ) ) {
+                        $files = array( array( 'title' => '', 'url' => '' ) );
+                    }
+                    ?>
+                    <table class="form-table admin-materials-table material-files" data-next-index="<?php echo count( $files ); ?>">
+                        <tbody>
+                        <?php foreach ( $files as $i => $file ) {
+                            render_global_materials_file_row( $c, $i, $file['title'], $file['url'] );
+                        } ?>
+                        </tbody>
                     </table>
+
+                    <template class="material-row-template">
+                        <?php render_global_materials_file_row( $c, '__INDEX__' ); ?>
+                    </template>
+
+                    <p><button type="button" class="button add-material-row-btn">+ <?php esc_html_e('Dodaj plik', 'amnestympl'); ?></button></p>
                 </div>
             <?php endfor; ?>
 
@@ -639,12 +776,48 @@ function render_global_materials_page() {
     <script>
     jQuery(document).ready(function($){
         var fileFrame;
-        
-        $('.upload-media-btn').click(function(e) {
+
+        // Row labels "Plik #1, #2..." follow the current order after adding/removing rows
+        function renumberRows($table) {
+            $table.find('.material-row-number').each(function(i) {
+                $(this).text(i + 1);
+            });
+        }
+        $('.material-files').each(function() {
+            renumberRows($(this));
+        });
+
+        $('.add-material-row-btn').on('click', function(e) {
             e.preventDefault();
-            
+            var $category = $(this).closest('.material-category');
+            var $table = $category.find('.material-files');
+            var index = parseInt($table.attr('data-next-index'), 10) || 0;
+            var html = $category.find('.material-row-template').html().replace(/__INDEX__/g, index);
+
+            $table.attr('data-next-index', index + 1);
+            $table.children('tbody').append(html);
+            renumberRows($table);
+        });
+
+        // Removes the row; the last row of a category is only cleared, so there is always one to fill in
+        $(document).on('click', '.remove-material-row-btn', function(e) {
+            e.preventDefault();
+            var $row = $(this).closest('.material-row');
+            var $table = $row.closest('.material-files');
+
+            if ($table.find('.material-row').length > 1) {
+                $row.remove();
+                renumberRows($table);
+            } else {
+                $row.find('input').val('');
+            }
+        });
+
+        $(document).on('click', '.upload-media-btn', function(e) {
+            e.preventDefault();
+
             // Store the target input based on the clicked button
-            var targetInput = $('#' + $(this).data('target'));
+            var targetInput = $(this).closest('.material-row').find('.material-url-input');
             
             // If the media frame already exists, update active input and reopen it
             if ( fileFrame ) { 
@@ -673,11 +846,6 @@ function render_global_materials_page() {
             
             fileFrame.open();
         });
-
-        $('.clear-media-btn').click(function(e) {
-            e.preventDefault();
-            $('#' + $(this).data('target')).val('');
-        });
     });
     </script>
     <?php
@@ -699,16 +867,13 @@ function render_digital_materials_shortcode() {
     for ( $c = 1; $c <= 3; $c++ ) {
         $cat_title = get_option('global_mat_cat_' . $c . '_title');
         $files = array();
-        
-        for ( $f = 1; $f <= 3; $f++ ) {
-            $file_title = get_option('global_mat_cat_' . $c . '_file_' . $f . '_title');
-            $file_url   = get_option('global_mat_cat_' . $c . '_file_' . $f . '_url');
-            
+
+        foreach ( get_global_materials_files( $c ) as $file ) {
             // Only add the file if a URL exists
-            if ( ! empty($file_url) ) {
+            if ( ! empty($file['url']) ) {
                 $files[] = array(
-                    'title' => $file_title ? $file_title : __('Pobierz plik', 'amnestympl'),
-                    'url'   => $file_url
+                    'title' => $file['title'] ? $file['title'] : __('Pobierz plik', 'amnestympl'),
+                    'url'   => $file['url']
                 );
             }
         }

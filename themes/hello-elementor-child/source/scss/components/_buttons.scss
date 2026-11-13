@@ -6,10 +6,11 @@ body {
 		}
 	}
 
-	// Shared yellow button: petition cards, [maraton_cta], "Sprawdź wszystkie" under the events map
+	// Shared yellow button: petition cards, [maraton_cta], "Sprawdź wszystkie" under the events map, materials order submit
 	.amnesty-card-button,
 	.maraton-cta-button,
-	.events-map-all-link {
+	.events-map-all-link,
+	.btn-yellow-block {
         display: block;
         width: fit-content;
 		font-family: 'Oswald', sans-serif;

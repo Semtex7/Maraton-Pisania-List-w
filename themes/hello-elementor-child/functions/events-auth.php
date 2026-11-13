@@ -230,16 +230,89 @@ function maraton_send_activation_email( $user_id, $page_url ) {
         'key'              => $key,
     ), $page_url ? $page_url : home_url('/') );
 
-    $subject = 'Potwierdź rejestrację - Maraton Pisania Listów';
-    $message  = "Cześć,\n\n";
-    $message .= "Dziękujemy za rejestrację w systemie Maratonu Pisania Listów Amnesty International.\n";
-    $message .= "Aby aktywować konto, kliknij w link:\n\n";
-    $message .= $link . "\n\n";
-    $message .= "Po aktywacji zaloguj się, aby dodać swoje wydarzenie i zamówić materiały.\n";
-    $message .= "Jeśli konto nie zostało założone przez Ciebie, zignoruj tę wiadomość.\n\n";
-    $message .= "Pozdrawiamy,\nZespół Amnesty International";
+    $email   = maraton_get_activation_email_texts();
+    $message = $email['body'];
 
-    return wp_mail($user->user_email, $subject, $message);
+    // Without the placeholder the account could never be activated, so the link is appended
+    if ( false === strpos( $message, '{link}' ) ) {
+        $message .= "\n\n{link}";
+    }
+    $message = str_replace( '{link}', $link, $message );
+
+    return wp_mail($user->user_email, $email['subject'], $message);
+}
+
+function maraton_activation_email_defaults() {
+    return array(
+        'subject' => 'Potwierdź rejestrację - Maraton Pisania Listów',
+        'body'    => "Cześć,\n\n"
+            . "Dziękujemy za rejestrację w systemie Maratonu Pisania Listów Amnesty International.\n"
+            . "Aby aktywować konto, kliknij w link:\n\n"
+            . "{link}\n\n"
+            . "Po aktywacji zaloguj się, aby dodać swoje wydarzenie i zamówić materiały.\n"
+            . "Jeśli konto nie zostało założone przez Ciebie, zignoruj tę wiadomość.\n\n"
+            . "Pozdrawiamy,\nZespół Amnesty International",
+    );
+}
+
+// Empty fields fall back to the defaults, so clearing a field restores the original text
+function maraton_get_activation_email_texts() {
+    $defaults = maraton_activation_email_defaults();
+    $subject  = trim( (string) get_option( 'maraton_activation_email_subject', '' ) );
+    $body     = trim( (string) get_option( 'maraton_activation_email_body', '' ) );
+
+    return array(
+        'subject' => '' !== $subject ? $subject : $defaults['subject'],
+        'body'    => '' !== $body ? $body : $defaults['body'],
+    );
+}
+
+// Wydarzenia na mapie → E-mail aktywacyjny
+add_action( 'admin_init', 'maraton_register_activation_email_settings' );
+
+function maraton_register_activation_email_settings() {
+    register_setting( 'maraton_activation_email_group', 'maraton_activation_email_subject', array( 'sanitize_callback' => 'sanitize_text_field' ) );
+    register_setting( 'maraton_activation_email_group', 'maraton_activation_email_body', array( 'sanitize_callback' => 'sanitize_textarea_field' ) );
+}
+
+add_action( 'admin_menu', 'maraton_register_activation_email_page' );
+
+function maraton_register_activation_email_page() {
+    add_submenu_page(
+        'edit.php?post_type=wydarzenie',
+        'E-mail aktywacyjny',
+        'E-mail aktywacyjny',
+        'manage_options',
+        'maraton_activation_email',
+        'maraton_render_activation_email_page'
+    );
+}
+
+function maraton_render_activation_email_page() {
+    $email = maraton_get_activation_email_texts();
+    ?>
+    <div class="wrap">
+        <h1>E-mail aktywacyjny</h1>
+        <p>Wiadomość wysyłana po rejestracji konta organizatora (oraz ponownie, gdy ktoś spróbuje się zalogować na nieaktywne konto).</p>
+        <form method="post" action="options.php">
+            <?php settings_fields( 'maraton_activation_email_group' ); ?>
+            <table class="form-table">
+                <tr>
+                    <th scope="row"><label for="maraton_activation_email_subject">Temat</label></th>
+                    <td><input type="text" class="large-text" id="maraton_activation_email_subject" name="maraton_activation_email_subject" value="<?php echo esc_attr( $email['subject'] ); ?>"></td>
+                </tr>
+                <tr>
+                    <th scope="row"><label for="maraton_activation_email_body">Treść</label></th>
+                    <td>
+                        <textarea class="large-text" rows="14" id="maraton_activation_email_body" name="maraton_activation_email_body"><?php echo esc_textarea( $email['body'] ); ?></textarea>
+                        <p class="description">Zwykły tekst, bez HTML. W miejscu <code>{link}</code> pojawi się link aktywacyjny; jeśli go zabraknie, link zostanie dopisany na końcu. Puste pole przywraca tekst domyślny.</p>
+                    </td>
+                </tr>
+            </table>
+            <?php submit_button(); ?>
+        </form>
+    </div>
+    <?php
 }
 
 add_action('template_redirect', 'handle_account_activation', 0);
@@ -257,8 +330,7 @@ function handle_account_activation() {
     $redirect = remove_query_arg( array('maraton_activate', 'key') );
 
     if ( $pending && '' !== $stored && hash_equals($stored, hash('sha256', $key)) ) {
-        delete_user_meta($user_id, 'maraton_account_pending');
-        delete_user_meta($user_id, 'maraton_activation_key');
+        maraton_activate_account($user_id);
         $status = '1';
     } elseif ( ! $pending && get_userdata($user_id) ) {
         $status = '1'; // Already active (link clicked twice)
@@ -283,6 +355,77 @@ function maraton_block_pending_accounts( $user ) {
     }
 
     return $user;
+}
+
+function maraton_activate_account( $user_id ) {
+    delete_user_meta($user_id, 'maraton_account_pending');
+    delete_user_meta($user_id, 'maraton_activation_key');
+}
+
+// Users list: account status and manual activation for people who never clicked the e-mail link
+add_filter('manage_users_columns', 'maraton_users_account_column');
+
+function maraton_users_account_column( $columns ) {
+    $columns['maraton_account'] = 'Status konta';
+    return $columns;
+}
+
+add_filter('manage_users_custom_column', 'maraton_users_account_column_value', 10, 3);
+
+function maraton_users_account_column_value( $output, $column, $user_id ) {
+    if ( 'maraton_account' !== $column ) {
+        return $output;
+    }
+
+    return get_user_meta($user_id, 'maraton_account_pending', true)
+        ? '<span style="color:#b32d2e;font-weight:600;">Nieaktywne</span>'
+        : 'Aktywne';
+}
+
+add_filter('user_row_actions', 'maraton_user_activate_row_action', 10, 2);
+
+function maraton_user_activate_row_action( $actions, $user ) {
+    if ( get_user_meta($user->ID, 'maraton_account_pending', true) && current_user_can('edit_user', $user->ID) ) {
+        $url = wp_nonce_url(
+            admin_url('admin-post.php?action=maraton_activate_user&user_id=' . $user->ID),
+            'maraton_activate_user_' . $user->ID
+        );
+        $actions['maraton_activate'] = '<a href="' . esc_url($url) . '">Aktywuj konto</a>';
+    }
+
+    return $actions;
+}
+
+add_action('admin_post_maraton_activate_user', 'maraton_handle_manual_activation');
+
+function maraton_handle_manual_activation() {
+    $user_id = isset($_GET['user_id']) ? absint($_GET['user_id']) : 0;
+    check_admin_referer('maraton_activate_user_' . $user_id);
+
+    if ( ! $user_id || ! get_userdata($user_id) || ! current_user_can('edit_user', $user_id) ) {
+        wp_die('Brak uprawnień do aktywacji tego konta.', '', array('response' => 403));
+    }
+
+    maraton_activate_account($user_id);
+
+    $back = wp_get_referer() ? wp_get_referer() : admin_url('users.php');
+    wp_safe_redirect( add_query_arg('maraton_activated', $user_id, remove_query_arg('maraton_activated', $back)) );
+    exit;
+}
+
+add_action('admin_notices', 'maraton_manual_activation_notice');
+
+function maraton_manual_activation_notice() {
+    if ( ! isset($_GET['maraton_activated']) ) {
+        return;
+    }
+
+    $user = get_userdata( absint($_GET['maraton_activated']) );
+    if ( ! $user ) {
+        return;
+    }
+
+    echo '<div class="notice notice-success is-dismissible"><p>Konto ' . esc_html($user->user_email) . ' zostało aktywowane. Ta osoba może się już zalogować.</p></div>';
 }
 
 // ====================================================================
@@ -388,6 +531,49 @@ function render_maraton_cta_shortcode( $atts = array() ) {
 
     return '<a class="maraton-cta-button ' . esc_attr($atts['class']) . '" href="' . esc_url($url) . '">' . esc_html($label) . '</a>';
 }
+
+// ====================================================================
+// 6. WP-LOGIN.PHP BRANDING (password reset screens)
+// Site logo instead of the WordPress one, Maraton colours on the button and notices.
+// ====================================================================
+
+add_action('login_enqueue_scripts', 'maraton_login_branding_styles');
+
+function maraton_login_branding_styles() {
+    // Elementor "Site Logo" first, then the theme custom logo
+    $logo_id  = (int) get_option( 'site_logo' );
+    $logo_id  = $logo_id ? $logo_id : (int) get_theme_mod( 'custom_logo' );
+    $logo_url = $logo_id ? wp_get_attachment_image_url( $logo_id, 'medium' ) : '';
+
+    $css = '
+        body.login { background: #f5f5f5; }
+        .login form { border: 1px solid #1A1A1A; border-radius: 0; box-shadow: none; }
+        .login .message, .login .notice, .login .success { border-left-color: #1A1A1A; }
+        .login input[type="text"]:focus, .login input[type="password"]:focus { border-color: #1A1A1A; box-shadow: 0 0 0 1px #1A1A1A; }
+        .login #wp-submit { background: #FFFF00; border: 1px solid #FFFF00; border-radius: 0; color: #1A1A1A; font-weight: 700; text-transform: uppercase; box-shadow: none; text-shadow: none; }
+        .login #wp-submit:hover, .login #wp-submit:focus { background: #1A1A1A; border-color: #1A1A1A; color: #FFFF00; }
+        .login #nav a, .login #backtoblog a { color: #1A1A1A; }
+        .login #nav a:hover, .login #backtoblog a:hover { color: #1A1A1A; text-decoration: underline; }
+    ';
+
+    if ( $logo_url ) {
+        $css .= '
+            .login h1 a { background-image: url("' . esc_url( $logo_url ) . '"); background-size: contain; background-position: center; width: 120px; height: 120px; }
+        ';
+    }
+
+    wp_register_style( 'maraton-login', false, array(), MARATON_VERSION );
+    wp_enqueue_style( 'maraton-login' );
+    wp_add_inline_style( 'maraton-login', $css );
+}
+
+add_filter('login_headerurl', function() {
+    return home_url('/');
+});
+
+add_filter('login_headertext', function() {
+    return get_bloginfo('name');
+});
 
 // ====================================================================
 // DYNAMIC MENU: Switch Login to Logout and inject Panel dynamically

@@ -92,6 +92,8 @@ Szczegóły: [hello-elementor-child.md](hello-elementor-child.md).
 | `generate_inpost_label` | AJAX | `manage_options` | motyw `events-shipping-api.php` |
 | `download_inpost_label` | `admin-post` | `manage_options` | motyw `events-shipping-api.php` |
 | `?download_report=<id>` | `template_redirect` | zalogowany autor, raport złożony | motyw `events-reports.php` |
+| `maraton_save_report_survey`, `maraton_reset_report_survey` | `admin-post` | `manage_options` + nonce | motyw `events-report-survey.php` |
+| `maraton_export_reports` | `admin-post` | `edit_posts` + nonce | motyw `events-report-survey.php` |
 
 Formularze logowania, rejestracji, wydarzenia i zamówienia materiałów są obsługiwane przez `template_redirect` (POST na tę samą stronę), nie przez AJAX.
 

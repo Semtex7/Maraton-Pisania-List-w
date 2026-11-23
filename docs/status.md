@@ -4,6 +4,16 @@ Stan na: 2026-10-14
 Gałąź: `develop` (śledzi `origin/develop`)  
 HEAD: `39eafd7` — „changes” (2026-10-14 12:52)  
 
+## Stan z 2026-11-23
+
+- **Zgłoszenie (klient, Krzysztof Nadratowski, przez właściciela):** moduł raportów po wydarzeniu wg briefu (tabela listów na bohatera: do władz / solidarnościowe, sumy; uczestnicy; warsztaty; inne aktywności; komentarz) i ankieta po wydarzeniu (23 pytania). Jedna ankieta, klient ma móc ją edytować.
+- **Decyzja (właściciel, 2026-11-23):** własny moduł w motywie; klient dodaje, edytuje, usuwa i przesuwa pytania (↑ ↓, „Dodaj pytanie tutaj”). Typy pytań w ankiecie dobrane przeze mnie (opis w [hello-elementor-child.md](hello-elementor-child.md#ankieta-raportu)).
+- **Kod (2026-11-23, gałąź `feature/report-survey`, niezatwierdzony, niewdrożony):** nowy moduł `functions/events-report-survey.php` (dopisany w `functions.php` przed `events-reports.php`), `assets/js/report-survey.js`, `assets/js/report-survey-admin.js`, `assets/css/report-survey.css`, `assets/css/report-survey-admin.css`; zmiany w `events-reports.php` (ankieta w formularzu zamiast pól „Liczba podpisanych listów” i „Liczba uczestników”, zapis `raport_ankieta`, odpowiedzi w metaboxie). Stare meta raportu nadal zapisywane.
+- **Testy:** sekcja 21 (`suite-report-survey.php`, 50 testów), razem **210/214** (te same 4 stare niepowodzenia). **Fakt:** sprawdzone w Chrome (headless, lokalnie, tymczasowy organizator i wydarzenie, potem usunięte): edytor (dodanie, przesunięcie, warunek tylko z pytań wyżej, zapis), formularz (warunki, „Inne”, sumy 17/3/20, blokada pustego wymaganego wielokrotnego wyboru, wysłanie), 390 px bez przewijania w poziomie, metabox, CSV; bez błędów JS.
+- **Fakt:** panel organizatora trzyma listę wydarzeń w zakładce Elementora; testy UI muszą ją najpierw otworzyć.
+- **Do wdrożenia (po akceptacji):** 5 nowych plików motywu, potem `events-reports.php`, na końcu `functions.php` (jedyna zmiana: linia `'functions/events-report-survey.php'`; `functions.php` ma też niewdrożoną linię `elementor-autosave-guard.php` z 2026-11-17, więc razem z nią albo bez niej). Po wdrożeniu: Wydarzenia → Ankieta raportu otwiera się z 26 kartami; formularz raportu w panelu; na produkcji tabela pokazuje wszystkie opublikowane petycje, dopóki klient nie wybierze ich w edytorze.
+- **Otwarte kwestie (do Krzysztofa):** czy ankieta ma być obowiązkowa razem z raportem; czy zostają pola podsumowania (wymagane), materiałów, linku do zdjęć i ZIP (ZIP trafia do publicznego `uploads`); czy organizator może poprawić raport po wysłaniu; czy wszystkie opublikowane petycje to bohaterowie; termin.
+
 ## Etap projektu
 
 Strona działa lokalnie (Local) i na stagingu (WP Engine). Produkcja nie istnieje — ma powstać ze stagingu na WP Engine w tygodniu od 2026-10-19 (**Decyzja**, właściciel projektu, 2026-10-14).

@@ -49,6 +49,7 @@ require __DIR__ . '/suite-core.php';
 require __DIR__ . '/suite-features.php';
 require __DIR__ . '/suite-salesforce-queue.php';
 require __DIR__ . '/suite-protection-privacy.php';
+require __DIR__ . '/suite-report-survey.php';
 
 echo "\nHTTP do serwisów zewnętrznych zablokowane: " . count( $GLOBALS['test_http'] ) . " prób\n";
 $results = $GLOBALS['results'];

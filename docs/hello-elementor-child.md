@@ -21,6 +21,7 @@ Motyw potomny Hello Elementor. Poza wyglądem strony zawiera logikę dla organiz
 | `elementor-widgets-manager.php` | rejestracja widgetu `Block_Counter_Widget` z `functions/widgets/block-counter.php` (plik w HEAD; w drzewie roboczym usunięty) |
 | `events-panel.php` | `[my_events]` i AJAX edycji wydarzenia |
 | `events-materials.php` | CPT `material_order`, `[materials_order]`, strona materiałów do pobrania |
+| `events-report-survey.php` | ankieta raportu: edytor pytań w adminie, pola formularza, zapis odpowiedzi, eksport CSV (patrz niżej) |
 | `events-reports.php` | raport po wydarzeniu, PDF, metabox raportu |
 | `events-shipping-api.php` | ustawienia i etykiety InPost — **wycofane**, patrz niżej |
 | `shortcodes.php` | pusty plik |
@@ -101,6 +102,19 @@ Oba endpointy wymagają `manage_options`. **Otwarta kwestia:** usunięcie lub wy
 - PDF (`?download_report=<id>`): sprawdza zalogowanie, typ wpisu, autora i złożenie raportu.
 
 Generator `amnesty_build_basic_pdf()` jest wersją wstępną bez biblioteki: jedna strona, font Helvetica/WinAnsi, polskie znaki usuwane przez `remove_accents()`, maksymalnie 43 linie. **Propozycja:** zastąpić go biblioteką PDF z obsługą fontów i wielu stron.
+
+### Ankieta raportu
+
+[`events-report-survey.php`](../themes/hello-elementor-child/functions/events-report-survey.php), od 2026-11-23 (gałąź `feature/report-survey`).
+
+- **Pytania:** opcja `maraton_report_survey` (`version`, `questions`, `archived`; autoload wyłączony). Bez zapisanej opcji działa ankieta domyślna z `maraton_survey_default()` (brief raportu + ankieta po wydarzeniu). Typy: nagłówek sekcji, krótka i długa odpowiedź, liczba, jeden wybór, wielokrotny wybór; specjalny `letters` = tabela listów (dokładnie jedna, nie da się jej usunąć).
+- **Pytanie:** stałe `id` (`q_…`), `label` (`{rok}` = rok zakończenia wydarzenia), `required`, `options`, `other` (nazwa odpowiedzi z polem do wpisania, pusta = brak), `condition` (`question` + `value`: pokaż, gdy w pytaniu **wyżej** zaznaczono tę odpowiedź). Tabela listów: `petitions` = wybrane petycje z opcjonalną nazwą; pusta lista = wszystkie opublikowane petycje, nazwa domyślna „tytuł (kraj)”.
+- **Edytor:** Wydarzenia → Ankieta raportu (`manage_options`), skrypt [`report-survey-admin.js`](../themes/hello-elementor-child/assets/js/report-survey-admin.js). Lista wysyłana jako JSON (`admin-post.php?action=maraton_save_report_survey`), serwer czyści ją ponownie (`maraton_survey_sanitize()`): puste karty i nieznane typy pomijane, błędne warunki usuwane z komunikatem, usunięte pytania trafiają do `archived` (dla kolumn CSV). „Przywróć ankietę początkową”: `maraton_reset_report_survey`.
+- **Formularz:** `maraton_survey_render_fields()` w `get_report_form`; zachowanie w [`report-survey.js`](../themes/hello-elementor-child/assets/js/report-survey.js) (warunki, pole „Inne”, sumy, wymagany wielokrotny wybór), style w [`report-survey.css`](../themes/hello-elementor-child/assets/css/report-survey.css). JS i CSS ładowane tylko z shortcode `[my_events]` (`do_shortcode_tag`), poza gulpem.
+- **Zapis:** `maraton_survey_collect()` w `save_event_report` przed wgraniem ZIP-a; pytania ukryte warunkiem są pomijane, sumy liczy serwer. Meta `raport_ankieta`: `survey_version`, `submitted_at`, `questions` (kopia treści z chwili wysłania), `answers`. Wybór: `{selected: [...], other: '...'}`; tabela: `{rows: [{petition_id, label, authorities, solidarity}], authorities, solidarity, total}`. Stare meta nadal zapisywane: `liczba_podpisanych_listow` = suma listów, `liczba_uczestnikow` = odpowiedź na `q_participants`.
+- **Admin:** odpowiedzi w metaboxie raportu; „Eksportuj raporty do CSV” nad listą wydarzeń (`edit_posts`, `admin-post.php?action=maraton_export_reports`): wiersz na raport, kolumny na bohatera (do władz / solidarnościowe), sumy, pytania z aktualnej ankiety, potem pytania tylko ze starszych raportów; średniki, BOM, ochrona przed formułami.
+- **Decyzja (2026-11-23, właściciel):** własny moduł zamiast wtyczki formularzy; klient może dodawać, edytować, usuwać i przesuwać pytania (↑ ↓ i „Dodaj pytanie tutaj”, bez przeciągania).
+- **Decyzja (moja):** pytanie 10 ankiety („Jeśli w którymś z powyższych…”) bez warunku, nieobowiązkowe: warunek z kilku pytań to za dużo jak na jeden przypadek. Pola podsumowania, materiałów, zdjęć i ZIP zostają bez zmian pod ankietą.
 
 ## Widget Elementora
 

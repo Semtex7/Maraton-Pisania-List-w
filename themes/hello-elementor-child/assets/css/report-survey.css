@@ -1,0 +1,109 @@
+/* Report survey in the organiser panel ([my_events], events-report-survey.php) */
+
+.report-survey .survey-question[hidden],
+.report-survey .survey-other[hidden] {
+    display: none;
+}
+
+.report-survey .survey-question {
+    margin-bottom: 28px;
+}
+
+.report-survey .survey-choices {
+    border: 0;
+    margin: 0;
+    padding: 0;
+    min-width: 0;
+}
+
+.report-survey .survey-choices legend {
+    padding: 0;
+    margin-bottom: 10px;
+}
+
+.report-survey .survey-choice {
+    display: flex;
+    align-items: flex-start;
+    gap: 4px;
+    margin-bottom: 8px;
+    cursor: pointer;
+    line-height: 1.4;
+}
+
+.report-survey .survey-choice input {
+    margin-top: 2px;
+}
+
+.report-survey .survey-other {
+    margin-top: 4px;
+}
+
+.report-survey .survey-number {
+    max-width: 200px;
+}
+
+.survey-letters-scroll {
+    overflow-x: auto;
+}
+
+.survey-letters-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+@media (max-width: 600px) {
+    .survey-letters-table th,
+    .survey-letters-table td {
+        padding: 6px 4px;
+        font-size: 14px;
+        hyphens: auto;
+        overflow-wrap: anywhere;
+    }
+
+    .survey-letters-table th:last-child,
+    .survey-letters-table td:last-child {
+        overflow-wrap: normal;
+        white-space: nowrap;
+    }
+
+    .survey-letters-table input[type="number"] {
+        min-width: 44px;
+        padding: 6px 4px;
+    }
+}
+
+.survey-letters-table th,
+.survey-letters-table td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: left;
+    vertical-align: middle;
+}
+
+.survey-letters-table thead th {
+    background: #f1f1f1;
+    font-weight: 600;
+}
+
+.survey-letters-table tbody th {
+    font-weight: normal;
+}
+
+/* Beats the global "form input[type=number]" margin */
+.survey-letters-table input[type="number"] {
+    width: 100%;
+    min-width: 56px;
+    margin: 0;
+}
+
+.survey-letters-table td:last-child,
+.survey-letters-table tfoot td {
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.survey-letters-table tfoot th,
+.survey-letters-table tfoot td {
+    background: #f9f9f9;
+    font-weight: 600;
+}

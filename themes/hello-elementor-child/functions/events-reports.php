@@ -28,22 +28,15 @@ function ajax_get_report_form() {
         
         <p class="form-description"><?php esc_html_e('Po wysłaniu raportu zostanie on na stałe przypisany do tego wydarzenia.', 'amnestympl'); ?></p>
 
+        <?php echo maraton_survey_render_fields( $event_id ); ?>
+
+        <h3 class="form-section-title"><?php esc_html_e('Podsumowanie i zdjęcia', 'amnestympl'); ?></h3>
+
         <div class="form-section">
             <label class="form-label">
                 <?php esc_html_e('Treść raportu / Podsumowanie', 'amnestympl'); ?> <span class="required-asterisk">*</span>
             </label>
-            <textarea name="report_content" class="form-textarea" required rows="6" placeholder="<?php esc_attr_e('Opisz krótko jak przebiegło wydarzenie, ile osób wzięło udział, jakie były reakcje...', 'amnestympl'); ?>"></textarea>
-        </div>
-
-        <div class="form-section split-row">
-            <div>
-                <label class="form-label"><?php esc_html_e('Liczba podpisanych listów', 'amnestympl'); ?></label>
-                <input type="number" name="letters_signed" class="form-input" min="0" step="1" inputmode="numeric">
-            </div>
-            <div>
-                <label class="form-label"><?php esc_html_e('Liczba uczestników', 'amnestympl'); ?></label>
-                <input type="number" name="participants_count" class="form-input" min="0" step="1" inputmode="numeric">
-            </div>
+            <textarea name="report_content" class="form-textarea" required rows="6" placeholder="<?php esc_attr_e('Opisz krótko jak przebiegło wydarzenie, jakie były reakcje...', 'amnestympl'); ?>"></textarea>
         </div>
 
         <div class="form-section">
@@ -108,9 +101,16 @@ function ajax_save_event_report() {
         wp_send_json_error( __('Treść raportu jest wymagana.', 'amnestympl') );
     }
 
-    $letters_signed    = isset( $_POST['letters_signed'] ) ? max( 0, intval( $_POST['letters_signed'] ) ) : 0;
-    $participants_count = isset( $_POST['participants_count'] ) ? max( 0, intval( $_POST['participants_count'] ) ) : 0;
-    $materials_taken   = isset( $_POST['materials_taken'] ) ? sanitize_key( $_POST['materials_taken'] ) : 'unknown';
+    // Validated before the ZIP upload so a rejected form does not leave a file behind
+    $survey = maraton_survey_collect( $event_id, $_POST['survey'] ?? array() );
+    if ( is_wp_error( $survey ) ) {
+        wp_send_json_error( $survey->get_error_message() );
+    }
+
+    $letters_answer     = maraton_survey_letters_answer( $survey );
+    $letters_signed     = $letters_answer ? (int) $letters_answer['total'] : 0;
+    $participants_count = isset( $survey['answers']['q_participants'] ) ? (int) $survey['answers']['q_participants'] : 0;
+    $materials_taken    = isset( $_POST['materials_taken'] ) ? sanitize_key( $_POST['materials_taken'] ) : 'unknown';
     $materials_notes   = isset( $_POST['materials_notes'] ) ? sanitize_textarea_field( $_POST['materials_notes'] ) : '';
 
     if ( ! in_array( $materials_taken, array( 'yes', 'no', 'unknown' ), true ) ) {
@@ -143,6 +143,7 @@ function ajax_save_event_report() {
     }
 
     // Attach data directly to the Event Post Meta
+    update_post_meta($event_id, MARATON_SURVEY_META, $survey);
     update_post_meta($event_id, 'raport_zlozony', '1');
     update_post_meta($event_id, 'tresc_raportu', $report_content);
     update_post_meta($event_id, 'liczba_podpisanych_listow', $letters_signed);
@@ -348,4 +349,5 @@ function render_event_report_meta_box($post) {
         </tr>
     </table>
     <?php
+    maraton_survey_render_admin_answers($post->ID);
 }

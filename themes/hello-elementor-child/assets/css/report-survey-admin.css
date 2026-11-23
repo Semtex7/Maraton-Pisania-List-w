@@ -1,0 +1,109 @@
+/* Wydarzenia → Ankieta raportu (report-survey-admin.js) */
+
+.maraton-survey-admin #maraton-survey-builder {
+    max-width: 900px;
+}
+
+.maraton-survey-help {
+    max-width: 900px;
+}
+
+.msb-card {
+    background: #fff;
+    border: 1px solid #c3c4c7;
+    border-left: 4px solid #2271b1;
+    padding: 12px 16px;
+}
+
+.msb-card.msb-type-heading {
+    border-left-color: #1d2327;
+    background: #f6f7f7;
+}
+
+.msb-card.msb-type-letters {
+    border-left-color: #dba617;
+}
+
+.msb-card-head {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 10px;
+}
+
+.msb-num {
+    min-width: 24px;
+    font-weight: 600;
+    color: #50575e;
+}
+
+.msb-actions {
+    margin-left: auto;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.msb-actions .button-link-delete {
+    margin-left: 8px;
+}
+
+.msb-field {
+    display: block;
+    margin-bottom: 10px;
+}
+
+.msb-field > span {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 4px;
+}
+
+.msb-inline {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+    margin-bottom: 8px;
+}
+
+.msb-condition {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 4px;
+    padding-top: 8px;
+    border-top: 1px solid #f0f0f1;
+}
+
+.msb-condition select {
+    max-width: 100%;
+}
+
+.msb-condition [hidden],
+.msb-inline [hidden] {
+    display: none;
+}
+
+.msb-petition {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 4px 0;
+    border-bottom: 1px solid #f0f0f1;
+}
+
+.msb-insert-row {
+    padding: 6px 0;
+    text-align: center;
+}
+
+.msb-insert-row .msb-insert {
+    text-decoration: none;
+}
+
+.maraton-survey-reset {
+    margin-top: 8px;
+}

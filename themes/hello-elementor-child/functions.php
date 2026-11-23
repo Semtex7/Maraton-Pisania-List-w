@@ -15,6 +15,7 @@ $maraton_modules = array(
     'functions/elementor-widgets-manager.php',
     'functions/events-panel.php',
     'functions/events-materials.php',
+    'functions/events-report-survey.php',
     'functions/events-reports.php',
     'functions/events-list.php',
     'functions/shortcodes.php',
